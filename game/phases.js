@@ -5,6 +5,7 @@ import { gameState } from './state.js';
 import { renderPhaseBanner, renderTimer, renderSidebar } from '../client/ui.js';
 import { runProduction } from './economy.js';
 import { updateDistrict } from '../client/board.js';
+import { decayHeat, checkRaids, processRaidTimers } from './heat.js';
 
 const PHASES = ['Buying', 'Dealing', 'Attacking'];
 let intervalId = null;
@@ -19,8 +20,16 @@ export function startPhaseTimer(){
   // initial render
   renderPhaseBanner(gameState.phase);
   renderTimer(gameState.timer);
-  // if starting in Buying phase, run production once
-  if(gameState.phase === 'Buying'){
+  // if starting in Dealing phase, generate dealing prices and run production once
+  if(gameState.phase === 'Dealing'){
+    // generate random dealing prices per district
+    gameState.districts.forEach(d => {
+      d.dealingPrices = {};
+      ['coke','weed','heroin'].forEach(pt => {
+        const base = (d.prices && d.prices[pt]) ? d.prices[pt] : 100;
+        d.dealingPrices[pt] = base * (0.75 + Math.random() * 0.5);
+      });
+    });
     const changed = runProduction();
     changed.forEach(id => {
       const d = gameState.districts.find(x => x.id === id);
@@ -43,14 +52,52 @@ export function startPhaseTimer(){
     gameState.phase = PHASES[phaseIndex];
     // reset timer
     gameState.timer = DEFAULT_PHASE_SECONDS;
-    // increment roundNumber on each phase change as requested
-    gameState.roundNumber = (gameState.roundNumber || 0) + 1;
+  // increment roundNumber on each phase change as requested
+  gameState.roundNumber = (gameState.roundNumber || 0) + 1;
+
+  // Start of a new round: process raid timers, decay heat, and check for new raids
+    const raidTimerChanged = processRaidTimers();
+    raidTimerChanged.forEach(id => {
+      const d = gameState.districts.find(x => x.id === id);
+      if(d) updateDistrict(id, d);
+    });
+
+    const decayed = decayHeat();
+    decayed.forEach(id => {
+      const d = gameState.districts.find(x => x.id === id);
+      if(d) updateDistrict(id, d);
+    });
+
+    const newlyRaided = checkRaids();
+    newlyRaided.forEach(id => {
+      const d = gameState.districts.find(x => x.id === id);
+      if(d) updateDistrict(id, d);
+    });
 
     // notify UI
     renderPhaseBanner(gameState.phase);
     renderTimer(gameState.timer);
-    // if we've just entered Buying, run production
+    // phase-enter actions
     if(gameState.phase === 'Buying'){
+      // reset per-player buildings bought counters
+      gameState.players.forEach(p => {
+        p.buildingsBoughtThisRound = { lab:0, growhouse:0, refinery:0 };
+        // reset sales/pusher usage for the new round
+        p.soldThisRound = 0;
+      });
+      renderSidebar();
+    }
+
+    if(gameState.phase === 'Dealing'){
+      // generate random dealing prices per district
+      gameState.districts.forEach(d => {
+        d.dealingPrices = {};
+        ['coke','weed','heroin'].forEach(pt => {
+          const base = (d.prices && d.prices[pt]) ? d.prices[pt] : 100;
+          d.dealingPrices[pt] = base * (0.75 + Math.random() * 0.5);
+        });
+      });
+      // run production at start of Dealing
       const changed = runProduction();
       changed.forEach(id => {
         const d = gameState.districts.find(x => x.id === id);

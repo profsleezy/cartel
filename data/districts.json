@@ -1,10 +1,10 @@
 [
-  { "id": "d1", "name": "Little Havana", "prices": { "coke": 120, "weed": 40, "heroin": 200 }, "adjacency": ["d2","d3"] },
-  { "id": "d2", "name": "South Beach", "prices": { "coke": 150, "weed": 50, "heroin": 220 }, "adjacency": ["d1","d4"] },
-  { "id": "d3", "name": "Downtown", "prices": { "coke": 200, "weed": 60, "heroin": 300 }, "adjacency": ["d1","d5"] },
-  { "id": "d4", "name": "Wynwood", "prices": { "coke": 100, "weed": 35, "heroin": 180 }, "adjacency": ["d2","d6"] },
-  { "id": "d5", "name": "Coconut Grove", "prices": { "coke": 90, "weed": 30, "heroin": 150 }, "adjacency": ["d3","d7"] },
-  { "id": "d6", "name": "Little River", "prices": { "coke": 110, "weed": 45, "heroin": 170 }, "adjacency": ["d4","d8"] },
-  { "id": "d7", "name": "Midtown", "prices": { "coke": 130, "weed": 55, "heroin": 210 }, "adjacency": ["d5","d8"] },
-  { "id": "d8", "name": "Harbor", "prices": { "coke": 170, "weed": 65, "heroin": 260 }, "adjacency": ["d6","d7"] }
+  { "id": "d1", "name": "Little Havana", "prices": { "coke": 75, "weed": 45, "heroin": 65 }, "adjacency": ["d2","d3"] },
+  { "id": "d2", "name": "South Beach", "prices": { "coke": 70, "weed": 50, "heroin": 55 }, "adjacency": ["d1","d4"] },
+  { "id": "d3", "name": "Downtown", "prices": { "coke": 60, "weed": 55, "heroin": 75 }, "adjacency": ["d1","d5"] },
+  { "id": "d4", "name": "Wynwood", "prices": { "coke": 45, "weed": 40, "heroin": 50 }, "adjacency": ["d2","d6"] },
+  { "id": "d5", "name": "Coconut Grove", "prices": { "coke": 50, "weed": 45, "heroin": 40 }, "adjacency": ["d3","d7"] },
+  { "id": "d6", "name": "Little River", "prices": { "coke": 55, "weed": 60, "heroin": 50 }, "adjacency": ["d4","d8"] },
+  { "id": "d7", "name": "Midtown", "prices": { "coke": 65, "weed": 70, "heroin": 60 }, "adjacency": ["d5","d8"] },
+  { "id": "d8", "name": "Harbor", "prices": { "coke": 75, "weed": 65, "heroin": 70 }, "adjacency": ["d6","d7"] }
 ]

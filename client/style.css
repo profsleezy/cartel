@@ -32,6 +32,17 @@ main{margin-left:240px;padding:24px}
 .action-panel h3{margin:0 0 8px 0}
 .action-panel button{background:var(--accent);color:var(--text);border:none;padding:8px 10px;border-radius:6px;cursor:pointer}
 
+/* spacing for multiple action buttons */
+.action-panel button + button{margin-left:8px}
+
+/* heat bar */
+.heat{height:8px;background:rgba(0,0,0,0.12);border-radius:6px;overflow:hidden;margin-top:8px}
+.heat .heat-fill{height:100%;width:0%;transition:width 300ms linear}
+
+/* raided appearance */
+.district.raided{filter:grayscale(60%);opacity:0.7}
+.district.raided .raid-label{display:block;font-weight:700;color:var(--neutral);margin-top:6px}
+
 .district.owned{border-left:4px solid var(--owned);box-shadow:0 6px 18px rgba(42,74,62,0.06)}
 .district.neutral{border-left:4px solid var(--neutral);box-shadow:0 6px 18px rgba(34,34,34,0.04)}
 .district.enemy{border-left:4px solid var(--enemy);box-shadow:0 6px 18px rgba(74,42,42,0.06)}

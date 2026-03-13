@@ -35,21 +35,43 @@ export function updateDistrict(districtId, newData){
     el.classList.add(newData.owner);
   }
 
-  // Update inner content (name, owner label, lab icon, product)
+  // Update inner content (name, owner label, buildings count, per-type inventory)
   const name = newData && newData.name ? newData.name : districtId;
   const ownerLabel = newData && newData.owner ? newData.owner : '';
-  const hasLab = newData && newData.labs;
-  const product = newData && typeof newData.product === 'number' ? newData.product : 0;
+  const buildings = newData && Array.isArray(newData.buildings) ? newData.buildings : [];
 
-  const labHtml = hasLab ? `<span class="lab">🧪</span>` : '';
-  const productHtml = product > 0 ? `<div class="product">Product: ${product}</div>` : '';
+  // building count
+  const buildingsHtml = `<div class="buildings">Buildings: ${buildings.length}/5</div>`;
+
+  // per-type inventory icons removed from tiles — inventory is now shown in the sidebar
+  const prodHtml = '';
+  const heat = newData && typeof newData.heat === 'number' ? newData.heat : 0;
+  const HEAT_CAP = 20; // probabilistic system uses cap of 20
+  const heatPct = Math.min(100, Math.round((heat / HEAT_CAP) * 100));
+  // label the bar 'Risk' and fill proportional to heat / 20
+  const heatHtml = `
+    <div class="risk-label">Risk</div>
+    <div class="heat"><div class="heat-fill" style="width:${heatPct}%;background:linear-gradient(90deg,var(--heat-low),var(--heat-high))"></div></div>
+  `;
+
+  // raided visual
+  if(newData && newData.raided){
+    el.classList.add('raided');
+  } else {
+    el.classList.remove('raided');
+  }
+
+  const raidLabelHtml = newData && newData.raided ? `<div class="raid-label">RAIDED</div>` : '';
 
   el.innerHTML = `
     <div>
-      <div class="name">${escapeHtml(name)} ${labHtml}</div>
+      <div class="name">${escapeHtml(name)}</div>
       <div class="owner">${escapeHtml(ownerLabel)}</div>
     </div>
-    ${productHtml}
+    ${buildingsHtml}
+    ${prodHtml}
+    ${heatHtml}
+    ${raidLabelHtml}
   `;
 }
 

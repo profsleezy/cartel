@@ -6,7 +6,7 @@ export const gameState = {
   timer: 45,
   roundNumber: 1,
   players: [
-    { id: 'player1', cash: 500, dealers: 3 }
+    { id: 'player1', cash: 500, dealers: 3, inventory: { coke: 0, weed: 0, heroin: 0 }, pushers: 1, soldThisRound: 0 }
   ],
   // districts will be populated by initGameState() from data/districts.json
   districts: []
@@ -30,8 +30,8 @@ export async function initGameState(){
       prices: d.prices || {},
       adjacency: d.adjacency || [],
       owner: 'neutral',
-      product: 0,
-      labs: false,
+      // buildings array (max 5). entries: { type: 'lab'|'growhouse'|'refinery' }
+      buildings: [],
       thugs: 0,
       heat: 0
     }));
@@ -39,6 +39,14 @@ export async function initGameState(){
     // for a tiny hand-tuned starting state, mark some as owned/enemy
     const assign = { d1: 'owned', d3: 'owned', d6: 'owned', d4: 'enemy', d8: 'enemy' };
     gameState.districts.forEach(ds => { if(assign[ds.id]) ds.owner = assign[ds.id]; });
+
+    // initialize per-player building purchase counters
+    gameState.players.forEach(p => {
+      p.buildingsBoughtThisRound = { lab: 0, growhouse: 0, refinery: 0 };
+      // ensure pusher and sold counters exist
+      if(typeof p.pushers !== 'number') p.pushers = 1;
+      if(typeof p.soldThisRound !== 'number') p.soldThisRound = 0;
+    });
 
     return gameState;
   }catch(err){
