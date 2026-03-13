@@ -24,6 +24,13 @@ main{margin-left:240px;padding:24px}
 .district{background:var(--surface);padding:12px;border-radius:8px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,0.03);cursor:default}
 .district .name{font-weight:700}
 .district .owner{font-size:12px;opacity:0.8}
+.district .lab{margin-left:6px}
+.district .product{font-size:12px;opacity:0.9;margin-top:8px}
+
+/* action panel in sidebar */
+.action-panel{margin-top:12px;padding:10px;background:rgba(0,0,0,0.08);border-radius:6px}
+.action-panel h3{margin:0 0 8px 0}
+.action-panel button{background:var(--accent);color:var(--text);border:none;padding:8px 10px;border-radius:6px;cursor:pointer}
 
 .district.owned{border-left:4px solid var(--owned);box-shadow:0 6px 18px rgba(42,74,62,0.06)}
 .district.neutral{border-left:4px solid var(--neutral);box-shadow:0 6px 18px rgba(34,34,34,0.04)}

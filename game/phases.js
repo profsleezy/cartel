@@ -2,7 +2,9 @@
 // Manages phase transitions and the phase timer. Calls UI renderers on changes.
 
 import { gameState } from './state.js';
-import { renderPhaseBanner, renderTimer } from '../client/ui.js';
+import { renderPhaseBanner, renderTimer, renderSidebar } from '../client/ui.js';
+import { runProduction } from './economy.js';
+import { updateDistrict } from '../client/board.js';
 
 const PHASES = ['Buying', 'Dealing', 'Attacking'];
 let intervalId = null;
@@ -17,6 +19,15 @@ export function startPhaseTimer(){
   // initial render
   renderPhaseBanner(gameState.phase);
   renderTimer(gameState.timer);
+  // if starting in Buying phase, run production once
+  if(gameState.phase === 'Buying'){
+    const changed = runProduction();
+    changed.forEach(id => {
+      const d = gameState.districts.find(x => x.id === id);
+      if(d) updateDistrict(id, d);
+    });
+    renderSidebar();
+  }
 
   intervalId = setInterval(() => {
     if (typeof gameState.timer !== 'number') gameState.timer = DEFAULT_PHASE_SECONDS;
@@ -38,6 +49,15 @@ export function startPhaseTimer(){
     // notify UI
     renderPhaseBanner(gameState.phase);
     renderTimer(gameState.timer);
+    // if we've just entered Buying, run production
+    if(gameState.phase === 'Buying'){
+      const changed = runProduction();
+      changed.forEach(id => {
+        const d = gameState.districts.find(x => x.id === id);
+        if(d) updateDistrict(id, d);
+      });
+      renderSidebar();
+    }
   }, 1000);
 }
 

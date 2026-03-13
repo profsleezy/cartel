@@ -1,6 +1,8 @@
 // client/ui.js
 // Renders the non-board UI: sidebar, phase banner, timer.
 
+import { gameState } from '../game/state.js';
+
 export function renderSidebar(){
   const sidebar = document.getElementById('sidebar');
   if(!sidebar) return;
@@ -12,10 +14,14 @@ export function renderSidebar(){
 
   const list = document.createElement('ul');
 
+  const player = gameState.players && gameState.players[0] ? gameState.players[0] : { cash: 0 };
+  // calculate total product across player's owned districts
+  const totalProduct = gameState.districts.reduce((sum, d) => sum + ((d.owner === 'owned' && d.product) ? d.product : 0), 0);
+
   const items = [
-    ['Cash', '$1,200'],
-    ['Heat', '12'],
-    ['Product', '7']
+    ['Cash', `$${player.cash}`],
+    ['Heat', `${player.heat || 0}`],
+    ['Product', `${totalProduct}`]
   ];
 
   items.forEach(([label, value]) => {
@@ -31,7 +37,7 @@ export function renderSidebar(){
 
   const tip = document.createElement('div');
   tip.className = 'sidebar-tip';
-  tip.textContent = 'Tips: Static UI — no interactions in Stage 1.';
+  tip.textContent = 'Click an owned district to see actions.';
 
   sidebar.appendChild(title);
   sidebar.appendChild(list);
@@ -49,4 +55,37 @@ export function renderTimer(seconds){
   if(!el) return;
   el.textContent = `${seconds}s`;
 }
+
+/**
+ * Show an action panel for the given district. This function is responsible for DOM work
+ * (input.js should not touch DOM directly). onBuyLab is a callback invoked when the user
+ * clicks Buy Lab.
+ */
+export function showActionPanel(districtId, { onBuyLab } = {}){
+  const sidebar = document.getElementById('sidebar');
+  if(!sidebar) return;
+
+  // small panel area
+  const panel = document.createElement('div');
+  panel.className = 'action-panel';
+  panel.innerHTML = `
+    <h3>Actions</h3>
+    <div id="action-district">${districtId}</div>
+  `;
+
+  const buyBtn = document.createElement('button');
+  buyBtn.textContent = 'Buy Lab';
+  buyBtn.addEventListener('click', () => {
+    if(typeof onBuyLab === 'function') onBuyLab();
+  });
+
+  panel.appendChild(buyBtn);
+
+  // replace or append panel
+  // remove previous action-panel if any
+  const prev = sidebar.querySelector('.action-panel');
+  if(prev) prev.remove();
+  sidebar.appendChild(panel);
+}
+
 

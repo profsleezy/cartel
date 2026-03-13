@@ -35,11 +35,22 @@ export function updateDistrict(districtId, newData){
     el.classList.add(newData.owner);
   }
 
-  // Update inner content (name + owner label)
+  // Update inner content (name, owner label, lab icon, product)
   const name = newData && newData.name ? newData.name : districtId;
   const ownerLabel = newData && newData.owner ? newData.owner : '';
+  const hasLab = newData && newData.labs;
+  const product = newData && typeof newData.product === 'number' ? newData.product : 0;
 
-  el.innerHTML = `<div class="name">${escapeHtml(name)}</div><div class="owner">${escapeHtml(ownerLabel)}</div>`;
+  const labHtml = hasLab ? `<span class="lab">🧪</span>` : '';
+  const productHtml = product > 0 ? `<div class="product">Product: ${product}</div>` : '';
+
+  el.innerHTML = `
+    <div>
+      <div class="name">${escapeHtml(name)} ${labHtml}</div>
+      <div class="owner">${escapeHtml(ownerLabel)}</div>
+    </div>
+    ${productHtml}
+  `;
 }
 
 function escapeHtml(s){
