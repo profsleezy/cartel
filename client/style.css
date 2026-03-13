@@ -1,0 +1,41 @@
+:root {
+  --bg: #0d0d0d;
+  --surface: #1a1a1a;
+  --accent: #e94560;
+  --text: #f0f0f0;
+  --owned: #2a4a3e;
+  --enemy: #4a2a2a;
+  --neutral: #2a2a2a;
+  --heat-low: #f0c040;
+  --heat-high: #e94560;
+}
+
+/* Basic layout using variables - no hardcoded colors */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+
+#sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;padding:20px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.03)}
+main{margin-left:240px;padding:24px}
+
+#phase-banner{position:fixed;left:50%;transform:translateX(-50%);top:12px;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.25);color:var(--accent);font-weight:700}
+#timer{position:fixed;right:18px;top:12px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.25);font-weight:600}
+
+#board{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:64px}
+.district{background:var(--surface);padding:12px;border-radius:8px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,0.03);cursor:default}
+.district .name{font-weight:700}
+.district .owner{font-size:12px;opacity:0.8}
+
+.district.owned{border-left:4px solid var(--owned);box-shadow:0 6px 18px rgba(42,74,62,0.06)}
+.district.neutral{border-left:4px solid var(--neutral);box-shadow:0 6px 18px rgba(34,34,34,0.04)}
+.district.enemy{border-left:4px solid var(--enemy);box-shadow:0 6px 18px rgba(74,42,42,0.06)}
+
+#sidebar h2{margin:0 0 10px 0;color:var(--accent)}
+#sidebar ul{list-style:none;padding:0;margin:0}
+#sidebar li{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.12);margin-bottom:8px;border-radius:6px}
+
+@media (max-width:700px){
+  #sidebar{position:relative;width:100%;height:auto;border-right:none;border-bottom:1px solid rgba(255,255,255,0.03)}
+  main{margin-left:0}
+  #phase-banner{top:86px}
+  #timer{top:86px}
+}
