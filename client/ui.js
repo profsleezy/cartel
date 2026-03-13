@@ -30,8 +30,7 @@ export function renderSidebar(){
   });
 
   const tip = document.createElement('div');
-  tip.style.fontSize = '12px';
-  tip.style.opacity = '0.9';
+  tip.className = 'sidebar-tip';
   tip.textContent = 'Tips: Static UI — no interactions in Stage 1.';
 
   sidebar.appendChild(title);

@@ -32,6 +32,8 @@ main{margin-left:240px;padding:24px}
 #sidebar h2{margin:0 0 10px 0;color:var(--accent)}
 #sidebar ul{list-style:none;padding:0;margin:0}
 #sidebar li{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.12);margin-bottom:8px;border-radius:6px}
+/* small helper class for sidebar tip text (moved from inline styles) */
+.sidebar-tip{font-size:12px;opacity:0.9;margin-top:12px;color:rgba(255,255,255,0.9)}
 
 @media (max-width:700px){
   #sidebar{position:relative;width:100%;height:auto;border-right:none;border-bottom:1px solid rgba(255,255,255,0.03)}
