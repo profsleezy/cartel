@@ -42,7 +42,9 @@ export function updateDistrict(districtId, newData){
 
   // building count
   const buildingsHtml = `<div class="buildings">Buildings: ${buildings.length}/5</div>`;
-
+  // thug count
+  const thugs = newData && typeof newData.thugs === 'number' ? newData.thugs : 0;
+  const thugsHtml = `<div class="thugs">Thugs: ${thugs}</div>`;
   // per-type inventory icons removed from tiles — inventory is now shown in the sidebar
   const prodHtml = '';
   const heat = newData && typeof newData.heat === 'number' ? newData.heat : 0;
@@ -69,10 +71,22 @@ export function updateDistrict(districtId, newData){
       <div class="owner">${escapeHtml(ownerLabel)}</div>
     </div>
     ${buildingsHtml}
+    ${thugsHtml}
     ${prodHtml}
     ${heatHtml}
     ${raidLabelHtml}
   `;
+}
+
+/** Highlight a set of district ids by adding the 'highlight' class. Clears highlights from others. */
+export function highlightTargets(districtIds){
+  const board = document.getElementById('board');
+  if(!board) return;
+  const all = Array.from(board.querySelectorAll('[data-id]'));
+  all.forEach(el => {
+    const id = el.dataset.id;
+    if(districtIds && districtIds.includes(id)) el.classList.add('highlight'); else el.classList.remove('highlight');
+  });
 }
 
 function escapeHtml(s){

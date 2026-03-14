@@ -1,14 +1,20 @@
 // client/input.js
 // Handles user interactions and delegates DOM rendering to ui.js and board.js
 
-import { showActionPanel, renderSidebar } from './ui.js';
-import { buyBuilding, dealProduct, deleteBuilding, buyPusher } from '../game/economy.js';
-import { updateDistrict } from './board.js';
+import { showActionPanel, renderSidebar, clearActionPanel } from './ui.js';
+import { buyBuilding, dealProduct, deleteBuilding, buyPusher, hireThugs } from '../game/economy.js';
+import { updateDistrict, highlightTargets } from './board.js';
 import { gameState } from '../game/state.js';
+import { getValidAttackTargets } from '../game/combat.js';
 
 export function initInput(){
   const board = document.getElementById('board');
   if(!board) return;
+
+  // attack selection state
+  let selectedSourceId = null;
+  let selectedCount = 1;
+  let selectedTargetId = null;
 
   board.addEventListener('click', (ev) => {
     const el = ev.target.closest('[data-id]');
@@ -18,6 +24,86 @@ export function initInput(){
     if(!d) return;
 
     // only show actions for owned districts
+    if(gameState.phase === 'Attacking'){
+      // Attacking phase behavior
+      // click on owned district selects source
+      if(d.owner === 'owned'){
+        selectedSourceId = id;
+        selectedTargetId = null;
+        const player = gameState.players[0];
+        // enforce single attack per round: if player already attacked, show a disabled message
+        if(player && player.hasAttackedThisRound){
+          showActionPanel(id, { buyButtons: [{ label: 'Attack used this round', disabled: true }] });
+          return;
+        }
+        // if there are no thugs here, inform the player
+        if((d.thugs || 0) <= 0){
+          showActionPanel(id, { buyButtons: [{ label: 'No thugs available', disabled: true }] });
+          return;
+        }
+        // compute valid targets (adjacent and not owned)
+        const valid = getValidAttackTargets(id);
+        highlightTargets(valid);
+        // default selected count is 1 up to available thugs
+        selectedCount = Math.min(Math.max(1, selectedCount || 1), d.thugs || 1);
+        // show action panel with attack controls
+        showActionPanel(id, {
+          attackControls: {
+            selectedCount: selectedCount,
+            max: d.thugs || 1,
+            targetId: selectedTargetId,
+            confirmDisabled: true,
+            onCountChange: (v) => { selectedCount = v; },
+            onConfirm: () => {
+              if(!selectedSourceId || !selectedTargetId) return;
+              // queue attack
+              if(!gameState.queuedAttacks) gameState.queuedAttacks = [];
+              gameState.queuedAttacks.push({ fromId: selectedSourceId, toId: selectedTargetId, thugsCount: selectedCount });
+              // mark player as having attacked this round so they can't queue again
+              if(gameState.players && gameState.players[0]) gameState.players[0].hasAttackedThisRound = true;
+              // clear selection/highlights and close the action panel so UI isn't stuck on a disabled button
+              selectedSourceId = null; selectedTargetId = null; selectedCount = 1;
+              highlightTargets([]);
+              clearActionPanel();
+              renderSidebar();
+            }
+          }
+        });
+        return;
+      }
+      // clicking an enemy district while a source is selected selects target
+      const selectedSource = selectedSourceId ? gameState.districts.find(x => x.id === selectedSourceId) : null;
+      if(selectedSource && d.owner !== 'owned'){
+        const valid = getValidAttackTargets(selectedSourceId);
+        if(valid.includes(id)){
+          selectedTargetId = id;
+          // re-render panel to enable confirm
+          showActionPanel(selectedSourceId, {
+            attackControls: {
+              selectedCount,
+              max: selectedSource.thugs || 1,
+              targetId: selectedTargetId,
+              confirmDisabled: false,
+              onCountChange: (v) => { selectedCount = v; },
+              onConfirm: () => {
+                if(!selectedSourceId || !selectedTargetId) return;
+                if(!gameState.queuedAttacks) gameState.queuedAttacks = [];
+                gameState.queuedAttacks.push({ fromId: selectedSourceId, toId: selectedTargetId, thugsCount: selectedCount });
+                  // mark player as having attacked this round so they can't queue again
+                  if(gameState.players && gameState.players[0]) gameState.players[0].hasAttackedThisRound = true;
+                // reset selection and UI
+                selectedSourceId = null; selectedTargetId = null; selectedCount = 1;
+                highlightTargets([]);
+                clearActionPanel();
+                renderSidebar();
+              }
+            }
+          });
+        }
+      }
+      return;
+    }
+
     if(d.owner === 'owned'){
       // Buying phase: show buy building buttons
       if(gameState.phase === 'Buying'){
@@ -73,6 +159,23 @@ export function initInput(){
               }
             }
           };
+        });
+
+        // Hire Thug button
+        const thugIdx = Math.min((player.thugsHiredThisRound || 0), 2);
+        const thugCost = Math.round([100,180,300][thugIdx] / 5) * 5;
+        buyButtons.push({
+          label: `Hire Thug (cost $${thugCost})`,
+          disabled: false,
+          onClick: () => {
+            const res = hireThugs(id, 1);
+            if(res && res.success){
+              updateDistrict(id, res.district);
+              renderSidebar();
+            } else {
+              console.warn('hireThugs failed', res && res.message);
+            }
+          }
         });
 
         showActionPanel(id, { buyButtons, buildingList });

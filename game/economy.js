@@ -78,6 +78,42 @@ export function buyBuilding(districtId, type){
 }
 
 /**
+ * Hire thug(s) on a district. Uses same escalating cost ladder per-player per-round.
+ * count defaults to 1. Returns { success, message, district, cost }
+ */
+export function hireThugs(districtId, count = 1){
+  const player = gameState.players[0];
+  if(!player) return { success:false, message:'No player' };
+  const d = gameState.districts.find(x => x.id === districtId);
+  if(!d) return { success:false, message:'District not found' };
+  if(d.owner !== 'owned') return { success:false, message:'Cannot hire on non-owned district' };
+  if(!Array.isArray(d.buildings)) d.buildings = d.buildings || [];
+  if(typeof d.thugs !== 'number') d.thugs = 0;
+
+  // per-round escalation: track thugs hired this round
+  if(typeof player.thugsHiredThisRound !== 'number') player.thugsHiredThisRound = 0;
+  const allowed = Math.max(0, 3 - player.thugsHiredThisRound); // max 3 per round
+  if(allowed <= 0) return { success:false, message:'Reached per-round hire limit' };
+  const toHire = Math.min(allowed, count);
+
+  // compute cost for each unit using escalation: each subsequent hire uses next cost
+  let totalCost = 0;
+  for(let i=0;i<toHire;i++){
+    const idx = Math.min(player.thugsHiredThisRound + i, BUILDING_COSTS.length - 1);
+    totalCost += BUILDING_COSTS[idx];
+  }
+  totalCost = Math.round(totalCost / 5) * 5;
+  if(player.cash < totalCost) return { success:false, message:'Insufficient cash', cost: totalCost };
+
+  player.cash -= totalCost;
+  player.cash = Math.round(player.cash / 5) * 5;
+  d.thugs = (d.thugs || 0) + toHire;
+  player.thugsHiredThisRound = (player.thugsHiredThisRound || 0) + toHire;
+
+  return { success:true, message:'Hired thugs', district: d, cost: totalCost, hired: toHire };
+}
+
+/**
  * Buy a pusher for the player. Cost assumed $50 (rounded to nearest 5).
  */
 export function buyPusher(){

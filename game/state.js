@@ -12,6 +12,12 @@ export const gameState = {
   districts: []
 };
 
+// queued attacks between phases
+export function ensureQueuedAttacks(){
+  if(!gameState.queuedAttacks) gameState.queuedAttacks = [];
+  return gameState.queuedAttacks;
+}
+
 /**
  * Initialize the gameState.districts from data/districts.json
  * This is async because we fetch the JSON file in the browser environment.
@@ -40,12 +46,23 @@ export async function initGameState(){
     const assign = { d1: 'owned', d3: 'owned', d6: 'owned', d4: 'enemy', d8: 'enemy' };
     gameState.districts.forEach(ds => { if(assign[ds.id]) ds.owner = assign[ds.id]; });
 
-    // initialize per-player building purchase counters
+    // give each player-owned district a starting thug
+    gameState.districts.forEach(ds => {
+      if(ds.owner === 'owned') ds.thugs = 1;
+    });
+
+    // initialize per-player purchase counters and thug counters
     gameState.players.forEach(p => {
       p.buildingsBoughtThisRound = { lab: 0, growhouse: 0, refinery: 0 };
       // ensure pusher and sold counters exist
       if(typeof p.pushers !== 'number') p.pushers = 1;
       if(typeof p.soldThisRound !== 'number') p.soldThisRound = 0;
+      // thugs hired counter per round
+      if(typeof p.thugsHiredThisRound !== 'number') p.thugsHiredThisRound = 0;
+      // attack flag per round
+      if(typeof p.hasAttackedThisRound !== 'boolean') p.hasAttackedThisRound = false;
+      // queued attacks array
+      if(!gameState.queuedAttacks) gameState.queuedAttacks = [];
     });
 
     return gameState;
@@ -53,4 +70,18 @@ export async function initGameState(){
     console.error('initGameState error', err);
     throw err;
   }
+}
+
+/**
+ * Remove players who own zero districts. Returns array of removed player ids.
+ */
+export function checkElimination(){
+  const removed = [];
+  // simple rule: if there are no districts owned by the human player, remove them
+  const ownedCount = gameState.districts.filter(d => d.owner === 'owned').length;
+  if(ownedCount === 0 && gameState.players.length > 0){
+    const rem = gameState.players.splice(0,1);
+    if(rem && rem.length) removed.push(rem[0].id);
+  }
+  return removed;
 }

@@ -46,7 +46,14 @@ export function triggerRaid(districtId){
   const d = gameState.districts.find(x => x.id === districtId);
   if(!d) return false;
   d.raided = true;
-  d.raidTimer = 2;
+  // keep raid active for two full dealing rounds (each round has 3 phases)
+  d.raidTimer = 2 * 3; // 2 dealing rounds => 6 phase transitions
+  // when raided, remove all thugs at that property
+  d.thugs = 0;
+  // remove one building from the district (player loses it)
+  if(Array.isArray(d.buildings) && d.buildings.length > 0){
+    d.buildings.pop();
+  }
   return true;
 }
 

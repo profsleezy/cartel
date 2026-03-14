@@ -47,6 +47,11 @@ main{margin-left:240px;padding:24px}
 .district.neutral{border-left:4px solid var(--neutral);box-shadow:0 6px 18px rgba(34,34,34,0.04)}
 .district.enemy{border-left:4px solid var(--enemy);box-shadow:0 6px 18px rgba(74,42,42,0.06)}
 
+/* highlight for valid attack targets */
+.district.highlight{outline:3px solid rgba(233,69,96,0.9);box-shadow:0 8px 20px rgba(233,69,96,0.06)}
+
+.thugs{font-size:12px;opacity:0.95;margin-top:8px}
+
 #sidebar h2{margin:0 0 10px 0;color:var(--accent)}
 #sidebar ul{list-style:none;padding:0;margin:0}
 #sidebar li{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.12);margin-bottom:8px;border-radius:6px}
