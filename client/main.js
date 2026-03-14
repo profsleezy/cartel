@@ -1,8 +1,7 @@
 // client/main.js
 import {
   renderSidebar,
-  renderPhaseBanner,
-  renderTimer,
+  renderGameStatus,
   renderEventTile,
   clearActionPanel,
   showGameOver,
@@ -18,10 +17,9 @@ import { initInput } from "./input.js";
 // phaseChanged = true  → full re-render (phase transition or initial load)
 // phaseChanged = false → timer tick; only the countdown needs updating
 window.addEventListener("gameStateChanged", (e) => {
-  renderTimer(gameState.timer);
+  renderGameStatus();
   renderEventTile();
   if (e.detail.phaseChanged) {
-    renderPhaseBanner(gameState.phase);
     renderSidebar();
     clearActionPanel();
     highlightTargets([]);
@@ -42,9 +40,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   dealStartingHand(2);
 
   // Initial render before the phase timer starts
-  renderPhaseBanner(gameState.phase);
-  renderTimer(gameState.timer);
-  renderEventTile();
+  renderGameStatus();
   renderSidebar();
   renderBoard(gameState.districts);
 

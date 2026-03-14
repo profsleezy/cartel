@@ -4,18 +4,65 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Cartel — Stage 1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="client/style.css">
 </head>
 <body>
+  <div id="app-shell">
+    <header id="top-bar">
+      <div class="top-left">
+        <div class="operation-label">OPERATION</div>
+        <div class="operation-name" id="operation-name">BISCAYNE WATCH</div>
+      </div>
+      <div class="phase-pill" id="phase-pill">
+        <div class="phase-segment" data-phase="Buying">BUYING</div>
+        <div class="phase-segment" data-phase="Dealing">DEALING</div>
+        <div class="phase-segment" data-phase="Attacking">ATTACKING</div>
+        <div class="timer-cluster">
+          <svg class="timer-ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg>
+          <div class="timer-seconds" id="timer-seconds">45</div>
+        </div>
+      </div>
+      <div class="top-right">
+        <div class="round-label">ROUND</div>
+        <div class="round-value" id="round-value">1</div>
+      </div>
+    </header>
 
-  <div id="phase-banner" aria-live="polite"></div>
-  <div id="timer" aria-live="polite"></div>
+    <div id="intel-strip" class="intel-strip hidden" role="status">
+      <span class="intel-dot"></span>
+      <span class="intel-label">INTEL</span>
+      <span class="intel-text" id="intel-text">No current event.</span>
+    </div>
+
+    <section id="map-area">
+      <svg id="shoreline" viewBox="0 0 900 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <pattern id="dot-grid" width="28" height="28" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r="0.7" fill="rgba(255,255,255,0.035)" />
+          </pattern>
+        </defs>
+        <rect x="0" y="0" width="900" height="640" fill="#07090d" />
+        <rect x="430" y="0" width="470" height="640" fill="#05111f" opacity="0.95" />
+        <rect x="0" y="0" width="900" height="640" fill="url(#dot-grid)" />
+        <path d="M 0 420 C 80 380, 150 350, 250 360 C 340 365, 340 310, 430 300 C 520 290, 560 220, 660 220 C 760 220, 820 260, 900 280" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.5"/>
+        <path d="M 0 430 C 80 390, 150 360, 250 370 C 340 375, 340 320, 430 310 C 520 300, 560 230, 660 230 C 760 230, 820 270, 900 290" fill="none" stroke="rgba(255,255,255,0.025)" stroke-width="0.5"/>
+        <text x="620" y="120" font-size="9" fill="rgba(255,255,255,0.05)" letter-spacing="3">BISCAYNE BAY</text>
+        <text x="620" y="140" font-size="7" fill="rgba(255,255,255,0.05)" letter-spacing="5">RESTRICTED</text>
+        <path d="M 0 60 H 900 M 0 180 H 900 M 0 300 H 900 M 0 420 H 900 M 0 540 H 900 M 150 0 V 640 M 300 0 V 640 M 450 0 V 640 M 600 0 V 640" stroke="rgba(255,255,255,0.022)" stroke-width="3"/>
+        <text x="12" y="630" font-size="7" fill="rgba(255,255,255,0.1)" font-family="JetBrains Mono, monospace">25°48'N 80°09'W</text>
+        <text x="760" y="630" font-size="7" fill="rgba(255,255,255,0.1)" font-family="JetBrains Mono, monospace">25°47'N 80°08'W</text>
+      </svg>
+
+      <main id="board" role="application" aria-label="District board"></main>
+    </section>
+
+    <footer id="bottom-bar"></footer>
+  </div>
 
   <div id="sidebar" role="complementary"></div>
-
-  <main>
-    <div id="board" role="application" aria-label="District board"></div>
-  </main>
 
   <script type="module" src="client/main.js"></script>
 </body>

@@ -109,50 +109,108 @@ let _fadeTimerId = null;
  * Hidden immediately when there is no current event.
  */
 export function renderEventTile() {
-  let tile = document.getElementById("event-tile");
-  if (!tile) {
-    tile = document.createElement("div");
-    tile.id = "event-tile";
-    document.body.appendChild(tile);
-  }
-
+  const intel = document.getElementById("intel-strip");
+  const intelText = document.getElementById("intel-text");
   const ev = gameState.currentEvent;
 
+  if (!intel || !intelText) return;
   if (!ev) {
-    // No event this round — hide and cancel any pending fade
-    tile.style.display = "none";
-    if (_fadeTimerId) {
-      clearTimeout(_fadeTimerId);
-      _fadeTimerId = null;
-    }
-    _shownEventKey = null;
+    intel.classList.add("hidden");
     return;
   }
 
-  // Build a unique key so re-renders during the same round don't reset the timer
-  const key = `${gameState.roundNumber}:${ev.id}`;
-  if (key === _shownEventKey) return; // same event already showing — leave it alone
+  intel.classList.remove("hidden");
+  intelText.textContent = `${ev.name}: ${ev.description}`;
+}
 
-  // New event — cancel any previous fade timer, reset classes, show the tile
-  if (_fadeTimerId) {
-    clearTimeout(_fadeTimerId);
-    _fadeTimerId = null;
+function renderTopBar(phase, timer, roundNumber) {
+  const segments = Array.from(document.querySelectorAll(".phase-segment"));
+  const active = phase ? phase.toLowerCase() : "buying";
+  segments.forEach((seg) => {
+    const p = seg.dataset.phase ? seg.dataset.phase.toLowerCase() : "";
+    if (p === active) {
+      seg.classList.add("active");
+    } else {
+      seg.classList.remove("active");
+    }
+  });
+
+  const ring = document.querySelector(".timer-ring circle");
+  if (ring) {
+    const remain = Math.max(0, Math.min(45, timer));
+    const pct = 1 - remain / 45;
+    ring.style.strokeDashoffset = `${50 * pct}`;
   }
-  _shownEventKey = key;
 
-  tile.className = "event-tile";
-  tile.style.display = "flex";
-  tile.innerHTML = `
-    <span class="event-tile__label">Event</span>
-    <span class="event-tile__name">${uiEscape(ev.name)}</span>
-    <span class="event-tile__desc">${uiEscape(ev.description)}</span>
-  `;
+  const timerSeconds = document.getElementById("timer-seconds");
+  if (timerSeconds) timerSeconds.textContent = `${timer}`;
 
-  // Start the 15-second countdown then fade out over 1.2 s
-  _fadeTimerId = setTimeout(() => {
-    tile.classList.add("event-tile--fading");
-    _fadeTimerId = null;
-  }, 15000);
+  const roundEl = document.getElementById("round-value");
+  if (roundEl) roundEl.textContent = `${roundNumber}`;
+}
+
+function renderBottomBar() {
+  const container = document.getElementById("bottom-bar");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const defaultPlayers = [
+    { id: "player1", name: "Jade", codename: "Viper", cash: 50000, dist: 4, push: 2, accent: "#10b981" },
+    { id: "enemy1", name: "Crimson", codename: "Red", cash: 36000, dist: 3, push: 3, accent: "#f87171" },
+    { id: "enemy2", name: "Blue", codename: "Shade", cash: 34500, dist: 3, push: 2, accent: "#60a5fa" },
+    { id: "enemy3", name: "Violet", codename: "Wraith", cash: 31700, dist: 3, push: 2, accent: "#a78bfa" },
+  ];
+
+  const players = gameState.players && gameState.players.length > 0 ? gameState.players : defaultPlayers;
+
+  for (let i = 0; i < 4; i += 1) {
+    const p = players[i] || defaultPlayers[i];
+    const strip = document.createElement("div");
+    strip.className = "player-strip" + (i === 0 ? " local" : "");
+
+    const dot = document.createElement("div");
+    dot.className = "player-dot";
+    dot.style.background = p.accent;
+    dot.style.boxShadow = `0 0 8px ${p.accent}66`;
+
+    const meta = document.createElement("div");
+    meta.className = "player-meta";
+    const name = document.createElement("div"); name.className = "player-name"; name.textContent = p.name;
+    name.style.color = i === 0 ? "#34d399" : "rgba(255,255,255,0.55)";
+    const codename = document.createElement("div"); codename.className = "player-codename"; codename.textContent = p.codename;
+    meta.appendChild(name);
+    meta.appendChild(codename);
+
+    const stats = document.createElement("div"); stats.className = "player-stats";
+    const cash = document.createElement("div"); cash.className = "stat-column"; cash.innerHTML = `<div class="stat-value cash-value" style="color:${p.accent}">${formatCurrency(p.cash || 0)}</div><div class="stat-label">Cash</div>`;
+    const dist = document.createElement("div"); dist.className = "stat-column"; dist.innerHTML = `<div class="stat-value">${p.dist || 0}</div><div class="stat-label">Dist</div>`;
+    const push = document.createElement("div"); push.className = "stat-column"; push.innerHTML = `<div class="stat-value">${p.push || 0}</div><div class="stat-label">Push</div>`;
+    stats.appendChild(cash); stats.appendChild(dist); stats.appendChild(push);
+
+    strip.appendChild(dot);
+    strip.appendChild(meta);
+    strip.appendChild(stats);
+    container.appendChild(strip);
+  }
+}
+
+export function renderPhaseBanner(phase) {
+  renderTopBar(phase, gameState.timer, gameState.roundNumber);
+}
+
+export function renderTimer(seconds) {
+  renderTopBar(gameState.phase, seconds, gameState.roundNumber);
+}
+
+function renderGameUi() {
+  renderTopBar(gameState.phase, gameState.timer, gameState.roundNumber);
+  renderBottomBar();
+  renderEventTile();
+}
+
+// expose helper so other code can update the bar if needed
+export function renderGameStatus() {
+  renderGameUi();
 }
 
 /**

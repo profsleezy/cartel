@@ -92,17 +92,23 @@ export function updateDistrict(districtId, newData) {
   if (!el) return;
 
   // clear previous owner classes
-  el.classList.remove("owned", "neutral", "enemy");
+  el.classList.remove("owner-player1", "owner-enemy1", "owner-enemy2", "owner-enemy3", "owner-neutral", "raided", "selected", "pending-attack");
 
-  // apply owner class based on player ID: player1 → .owned, neutral → .neutral, anything else → .enemy
+  // apply owner class based on player ID
   const CURRENT_PLAYER_ID = "player1";
   if (newData && newData.owner) {
     if (newData.owner === CURRENT_PLAYER_ID) {
-      el.classList.add("owned");
+      el.classList.add("owner-player1");
     } else if (newData.owner === "neutral") {
-      el.classList.add("neutral");
+      el.classList.add("owner-neutral");
+    } else if (newData.owner === "enemy1") {
+      el.classList.add("owner-enemy1");
+    } else if (newData.owner === "enemy2") {
+      el.classList.add("owner-enemy2");
+    } else if (newData.owner === "enemy3") {
+      el.classList.add("owner-enemy3");
     } else {
-      el.classList.add("enemy");
+      el.classList.add("owner-neutral");
     }
   }
 
@@ -121,53 +127,33 @@ export function updateDistrict(districtId, newData) {
     newData && Array.isArray(newData.buildings) ? newData.buildings : [];
 
   // building count
-  const buildingsHtml = `<div class="buildings">Buildings: ${buildings.length}/5</div>`;
-  // thug count
-  const thugs =
-    newData && typeof newData.thugs === "number" ? newData.thugs : 0;
-  const thugsHtml = `<div class="thugs">Thugs: ${thugs}</div>`;
-  // per-type inventory icons removed from tiles — inventory is now shown in the sidebar
-  const prodHtml = "";
+  const thugs = newData && typeof newData.thugs === "number" ? newData.thugs : 0;
   const heat = newData && typeof newData.heat === "number" ? newData.heat : 0;
-  const HEAT_CAP = 20; // probabilistic system uses cap of 20
+  const HEAT_CAP = 20;
   const heatPct = Math.min(100, Math.round((heat / HEAT_CAP) * 100));
-  // label the bar 'Risk' and fill proportional to heat / 20
-  const heatHtml = `
-    <div class="risk-label">Risk</div>
-    <div class="heat"><div class="heat-fill" style="width:${heatPct}%;background:linear-gradient(90deg,var(--heat-low),var(--heat-high))"></div></div>
-  `;
 
-  // raided visual
   if (newData && newData.raided) {
     el.classList.add("raided");
-  } else {
-    el.classList.remove("raided");
   }
 
-  // pending-attack visual (queued attack target — persists until attack resolves)
   if (newData && newData.pendingAttack) {
-    el.classList.add("pending-attack");
-  } else {
-    el.classList.remove("pending-attack");
+    el.classList.add("selected");
   }
-
-  const raidLabelHtml =
-    newData && newData.raided ? `<div class="raid-label">RAIDED</div>` : "";
-  const specialityHtml = newData
-    ? `<div class="specialty">⭐ ${escapeHtml(newData.specialty || "?")} | ⚠️ ${escapeHtml(newData.weakness || "?")}</div>`
-    : "";
 
   el.innerHTML = `
-    <div>
+    <div class="d-inner">
       <div class="name">${escapeHtml(name)}</div>
-      <div class="owner">${escapeHtml(ownerLabel)}</div>
+      <div class="owner-tag">${escapeHtml(ownerLabel)}</div>
+      <div class="stats-row">
+        <div class="stat"><span class="value">${escapeHtml(thugs)}</span> THUGS</div>
+        <div class="stat"><span class="value">${escapeHtml(buildings.length)}</span> BLD</div>
+      </div>
+      <div class="risk-wrap">
+        <div class="risk-label">Risk</div>
+        <div class="risk"><div class="risk-fill" style="width:${heatPct}%"></div></div>
+      </div>
+      ${newData && newData.raided ? `<div class="raid-label">RAIDED</div>` : ""}
     </div>
-    ${specialityHtml}
-    ${buildingsHtml}
-    ${thugsHtml}
-    ${prodHtml}
-    ${heatHtml}
-    ${raidLabelHtml}
   `;
 }
 
