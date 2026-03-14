@@ -3,9 +3,9 @@
     "id": "c1",
     "name": "Dirty Money",
     "type": "action",
-    "description": "Gain $300.",
+    "description": "Gain $30,000.",
     "phase": "Buying",
-    "effect": { "type": "cash_bonus", "value": 300 }
+    "effect": { "type": "cash_bonus", "value": 30000 }
   },
   {
     "id": "c2",
@@ -53,9 +53,9 @@
     "id": "c7",
     "name": "Street Cash",
     "type": "action",
-    "description": "Gain $150.",
+    "description": "Gain $15,000.",
     "phase": "Any",
-    "effect": { "type": "cash_bonus", "value": 150 }
+    "effect": { "type": "cash_bonus", "value": 15000 }
   },
   {
     "id": "c8",

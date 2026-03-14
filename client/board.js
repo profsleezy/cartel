@@ -153,12 +153,16 @@ export function updateDistrict(districtId, newData) {
 
   const raidLabelHtml =
     newData && newData.raided ? `<div class="raid-label">RAIDED</div>` : "";
+  const specialityHtml = newData
+    ? `<div class="specialty">⭐ ${escapeHtml(newData.specialty || "?")} | ⚠️ ${escapeHtml(newData.weakness || "?")}</div>`
+    : "";
 
   el.innerHTML = `
     <div>
       <div class="name">${escapeHtml(name)}</div>
       <div class="owner">${escapeHtml(ownerLabel)}</div>
     </div>
+    ${specialityHtml}
     ${buildingsHtml}
     ${thugsHtml}
     ${prodHtml}

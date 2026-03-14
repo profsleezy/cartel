@@ -8,7 +8,7 @@ export const gameState = {
   players: [
     {
       id: "player1",
-      cash: 500,
+      cash: 50000,
       dealers: 3,
       pushers: 1,
       soldThisRound: 0,
@@ -45,26 +45,59 @@ export async function initGameState() {
     const data = await res.json();
 
     // map to internal district shape and set sensible defaults
-    gameState.districts = data.map((d) => ({
-      id: d.id,
-      name: d.name,
-      prices: d.prices || {},
-      adjacency: d.adjacency || [],
-      owner: "neutral",
-      // buildings array (max 5). entries: { type: 'lab'|'growhouse'|'refinery' }
-      buildings: [],
-      thugs: 0,
-      heat: 0,
-      stash: { coke: 0, weed: 0, heroin: 0 },
-    }));
+    const PRODUCTS = ["coke", "weed", "heroin"];
+    const SPECIALTY_MULTIPLIER = 1.4;
+    const WEAKNESS_MULTIPLIER = 0.75;
+
+    gameState.districts = data.map((d) => {
+      const basePrices = {
+        coke: d.prices && d.prices.coke ? roundTo500(d.prices.coke) : 7500,
+        weed: d.prices && d.prices.weed ? roundTo500(d.prices.weed) : 5000,
+        heroin: d.prices && d.prices.heroin ? roundTo500(d.prices.heroin) : 6500,
+      };
+
+      // Random specialty and weakness per district, not the same product.
+      const specialty = PRODUCTS[Math.floor(Math.random() * PRODUCTS.length)];
+      let weakness = PRODUCTS[Math.floor(Math.random() * PRODUCTS.length)];
+      while (weakness === specialty) {
+        weakness = PRODUCTS[Math.floor(Math.random() * PRODUCTS.length)];
+      }
+
+      return {
+        id: d.id,
+        name: d.name,
+        prices: {
+          coke: basePrices.coke,
+          weed: basePrices.weed,
+          heroin: basePrices.heroin,
+        },
+        basePrices,
+        specialty,
+        weakness,
+        adjacency: d.adjacency || [],
+        owner: "neutral",
+        // buildings array (max 5). entries: { type: 'lab'|'growhouse'|'refinery' }
+        buildings: [],
+        thugs: 0,
+        heat: 0,
+        stash: { coke: 0, weed: 0, heroin: 0 },
+      };
+    });
+
+    function roundTo500(value) {
+      if (typeof value !== "number") return 500;
+      return Math.round(value / 500) * 500;
+    }
 
     // for a tiny hand-tuned starting state, mark some districts with player IDs
     const assign = {
       d1: "player1",
       d3: "player1",
       d6: "player1",
+      d10: "player1",
       d4: "enemy1",
       d8: "enemy1",
+      d12: "enemy1",
     };
     gameState.districts.forEach((ds) => {
       if (assign[ds.id]) ds.owner = assign[ds.id];

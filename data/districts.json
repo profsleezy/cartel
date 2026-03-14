@@ -1,10 +1,18 @@
 [
-  { "id": "d1", "name": "Little Havana", "prices": { "coke": 75, "weed": 45, "heroin": 65 }, "adjacency": ["d2","d3"] },
-  { "id": "d2", "name": "South Beach", "prices": { "coke": 70, "weed": 50, "heroin": 55 }, "adjacency": ["d1","d4"] },
-  { "id": "d3", "name": "Downtown", "prices": { "coke": 60, "weed": 55, "heroin": 75 }, "adjacency": ["d1","d5"] },
-  { "id": "d4", "name": "Wynwood", "prices": { "coke": 45, "weed": 40, "heroin": 50 }, "adjacency": ["d2","d6"] },
-  { "id": "d5", "name": "Coconut Grove", "prices": { "coke": 50, "weed": 45, "heroin": 40 }, "adjacency": ["d3","d7"] },
-  { "id": "d6", "name": "Little River", "prices": { "coke": 55, "weed": 60, "heroin": 50 }, "adjacency": ["d4","d8"] },
-  { "id": "d7", "name": "Midtown", "prices": { "coke": 65, "weed": 70, "heroin": 60 }, "adjacency": ["d5","d8"] },
-  { "id": "d8", "name": "Harbor", "prices": { "coke": 75, "weed": 65, "heroin": 70 }, "adjacency": ["d6","d7"] }
+  { "id": "d1", "name": "Little Havana", "prices": { "coke": 7500, "weed": 4500, "heroin": 6500 }, "adjacency": ["d2","d5"] },
+  { "id": "d2", "name": "South Beach", "prices": { "coke": 7000, "weed": 5000, "heroin": 5500 }, "adjacency": ["d1","d3","d6"] },
+  { "id": "d3", "name": "Downtown", "prices": { "coke": 6000, "weed": 5500, "heroin": 7500 }, "adjacency": ["d2","d4","d7"] },
+  { "id": "d4", "name": "Wynwood", "prices": { "coke": 4500, "weed": 4000, "heroin": 5000 }, "adjacency": ["d3","d8"] },
+  { "id": "d5", "name": "Coconut Grove", "prices": { "coke": 5000, "weed": 4500, "heroin": 4000 }, "adjacency": ["d1","d6","d9"] },
+  { "id": "d6", "name": "Little River", "prices": { "coke": 5500, "weed": 6000, "heroin": 5000 }, "adjacency": ["d2","d5","d7","d10"] },
+  { "id": "d7", "name": "Midtown", "prices": { "coke": 6500, "weed": 7000, "heroin": 6000 }, "adjacency": ["d3","d6","d8","d11"] },
+  { "id": "d8", "name": "Harbor", "prices": { "coke": 7500, "weed": 6500, "heroin": 7000 }, "adjacency": ["d4","d7","d12"] },
+  { "id": "d9", "name": "The Quay", "prices": { "coke": 5600, "weed": 5200, "heroin": 5800 }, "adjacency": ["d5","d10","d13"] },
+  { "id": "d10", "name": "Ocean Ridge", "prices": { "coke": 6200, "weed": 5400, "heroin": 6000 }, "adjacency": ["d6","d9","d11","d14"] },
+  { "id": "d11", "name": "West End", "prices": { "coke": 6800, "weed": 6100, "heroin": 6500 }, "adjacency": ["d7","d10","d12","d15"] },
+  { "id": "d12", "name": "Eastport", "prices": { "coke": 7000, "weed": 6300, "heroin": 6200 }, "adjacency": ["d8","d11","d16"] },
+  { "id": "d13", "name": "The Heights", "prices": { "coke": 7300, "weed": 6700, "heroin": 6400 }, "adjacency": ["d9","d14"] },
+  { "id": "d14", "name": "Riverside", "prices": { "coke": 7600, "weed": 6800, "heroin": 6600 }, "adjacency": ["d10","d13","d15"] },
+  { "id": "d15", "name": "The Pines", "prices": { "coke": 7800, "weed": 6900, "heroin": 6700 }, "adjacency": ["d11","d14","d16"] },
+  { "id": "d16", "name": "Crescent City", "prices": { "coke": 8000, "weed": 7000, "heroin": 6800 }, "adjacency": ["d12","d15"] }
 ]

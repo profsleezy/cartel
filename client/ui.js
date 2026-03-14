@@ -3,6 +3,11 @@
 
 import { gameState, getPlayer } from "../game/state.js";
 
+function formatCurrency(value) {
+  if (typeof value !== "number") return "$0";
+  return `$${value.toLocaleString()}`;
+}
+
 // Effect type → display metadata for the active effects indicator
 const EFFECT_META = {
   price_surge: { icon: "📈", label: "Price Up" },
@@ -49,7 +54,7 @@ export function renderSidebar() {
   const maxRisk = Math.max(0, ...ownedDistricts.map((d) => d.heat || 0));
 
   const items = [
-    ["Cash", `$${roundedCash}`],
+    ["Cash", formatCurrency(roundedCash)],
     ["Max Risk", `${maxRisk}`],
     ["Pushers", `${player.pushers || 0}`],
     ["Product", `${totalProduct}`],

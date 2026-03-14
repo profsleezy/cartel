@@ -17,6 +17,38 @@ if (phaseIndex === -1) phaseIndex = 0;
 
 const DEFAULT_PHASE_SECONDS = 45;
 
+function roundTo500(value) {
+  if (typeof value !== "number") return 0;
+  return Math.round(value / 500) * 500;
+}
+
+function getPriceRangeMultiplier(district, product) {
+  if (!district || !product) return 0.75 + Math.random() * 0.5;
+  const base = district.basePrices && district.basePrices[product]
+    ? district.basePrices[product]
+    : 10000;
+  // random price within 75%-125% base
+  let min = 0.75;
+  let max = 1.25;
+  if (district.specialty === product) {
+    max = 1.75;
+    min = 0.85;
+  }
+  if (district.weakness === product) {
+    min = 0.5;
+    max = 1.0;
+  }
+  return min + Math.random() * (max - min);
+}
+
+function generateDealingPrice(district, product) {
+  const base = district.basePrices && district.basePrices[product]
+    ? district.basePrices[product]
+    : 10000;
+  const multiplier = getPriceRangeMultiplier(district, product);
+  return roundTo500(base * multiplier);
+}
+
 /**
  * Dispatch a gameStateChanged event so the client can re-render.
  * phaseChanged = true  → full re-render (phase transition or initial load)
@@ -36,8 +68,8 @@ export function startPhaseTimer() {
     gameState.districts.forEach((d) => {
       d.dealingPrices = {};
       ["coke", "weed", "heroin"].forEach((pt) => {
-        const base = d.prices && d.prices[pt] ? d.prices[pt] : 100;
-        d.dealingPrices[pt] = base * (0.75 + Math.random() * 0.5);
+        const price = generateDealingPrice(d, pt);
+        d.dealingPrices[pt] = roundTo500(price);
       });
     });
     runProduction();
@@ -175,9 +207,8 @@ export function startPhaseTimer() {
       gameState.districts.forEach((d) => {
         d.dealingPrices = {};
         ["coke", "weed", "heroin"].forEach((pt) => {
-          const base = d.prices && d.prices[pt] ? d.prices[pt] : 100;
-          d.dealingPrices[pt] =
-            base * (0.75 + Math.random() * 0.5) * priceMultiplier;
+          const price = generateDealingPrice(d, pt) * priceMultiplier;
+          d.dealingPrices[pt] = roundTo500(price);
         });
       });
       runProduction();

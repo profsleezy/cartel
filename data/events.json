@@ -18,14 +18,14 @@
     "name": "Street Windfall",
     "description": "A deal falls in your lap. Gain $200.",
     "weight": 10,
-    "effect": { "type": "cash_bonus", "value": 200 }
+    "effect": { "type": "cash_bonus", "value": 20000 }
   },
   {
     "id": "e4",
     "name": "Protection Racket",
-    "description": "Pay up or face consequences. Lose $150.",
+    "description": "Pay up or face consequences. Lose $15,000.",
     "weight": 7,
-    "effect": { "type": "cash_penalty", "value": 150 }
+    "effect": { "type": "cash_penalty", "value": 15000 }
   },
   {
     "id": "e5",

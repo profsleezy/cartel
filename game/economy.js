@@ -5,7 +5,7 @@ import { gameState, getPlayer } from "./state.js";
 import { addHeat, rollRaid, triggerRaid } from "./heat.js";
 
 // Building cost ladder (per-player escalation). Max 3 purchases per type per round.
-const BUILDING_COSTS = [100, 180, 300];
+const BUILDING_COSTS = [10000, 18000, 30000];
 
 /**
  * Run production on a district: deposit units into district.stash for each building.
@@ -136,7 +136,7 @@ export function hireThugs(districtId, count = 1) {
 export function buyPusher() {
   const player = getPlayer("player1");
   if (!player) return { success: false, message: "No player" };
-  const cost = Math.round(150 / 5) * 5;
+  const cost = Math.round(15000 / 5) * 5;
   if (player.cash < cost)
     return { success: false, message: "Insufficient cash", cost };
   player.cash -= cost;
@@ -168,7 +168,7 @@ export function deleteBuilding(districtId, buildingIndex) {
   if (buildingIndex < 0 || buildingIndex >= d.buildings.length)
     return { success: false, message: "Invalid building index" };
   d.buildings.splice(buildingIndex, 1);
-  const refund = Math.round(50 / 5) * 5;
+  const refund = Math.round(5000 / 5) * 5;
   player.cash += refund;
   return { success: true, message: "Building removed", district: d, refund };
 }
@@ -228,7 +228,7 @@ export function dealProduct(
       ? tgt.dealingPrices[productType]
       : tgt.prices && tgt.prices[productType]
         ? tgt.prices[productType]
-        : 100;
+        : 10000;
   const pricePerUnit = Math.round(rawPrice / 5) * 5;
   const totalAmount = pricePerUnit * quantity;
 
