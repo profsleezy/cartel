@@ -7,15 +7,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="client/style.css">
+  <link rel="stylesheet" href="client/style.css?v=panel1">
 </head>
-<body>
+<body data-app="cartel">
   <div id="app-shell">
     <header id="top-bar">
       <div class="top-left">
         <div class="operation-label">OPERATION</div>
         <div class="operation-name" id="operation-name">BISCAYNE WATCH</div>
       </div>
+      <div class="top-center">
       <div class="phase-pill" id="phase-pill">
         <div class="phase-segment" data-phase="Buying">BUYING</div>
         <div class="phase-segment" data-phase="Dealing">DEALING</div>
@@ -24,6 +25,7 @@
           <svg class="timer-ring" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8"/></svg>
           <div class="timer-seconds" id="timer-seconds">45</div>
         </div>
+      </div>
       </div>
       <div class="top-right">
         <div class="round-label">ROUND</div>
@@ -37,33 +39,56 @@
       <span class="intel-text" id="intel-text">No current event.</span>
     </div>
 
+    <div class="main-content">
     <section id="map-area">
       <svg id="shoreline" viewBox="0 0 900 640" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <defs>
           <pattern id="dot-grid" width="28" height="28" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.7" fill="rgba(255,255,255,0.035)" />
+            <circle cx="14" cy="14" r="0.7" fill="rgba(255,255,255,0.028)" />
           </pattern>
+          <!-- Coast: irregular segment lengths (short and long hops), random-feeling jaggedness -->
+          <path id="coast" d="M 508 0 L 497 38 L 521 112 L 484 175 L 516 268 L 489 318 L 512 405 L 481 478 L 519 555 L 492 640" />
+          <clipPath id="land-clip">
+            <path d="M 0 0 L 508 0 L 497 38 L 521 112 L 484 175 L 516 268 L 489 318 L 512 405 L 481 478 L 519 555 L 492 640 L 0 640 Z" />
+          </clipPath>
         </defs>
-        <rect x="0" y="0" width="900" height="640" fill="#07090d" />
-        <rect x="430" y="0" width="470" height="640" fill="#05111f" opacity="0.95" />
-        <rect x="0" y="0" width="900" height="640" fill="url(#dot-grid)" />
-        <path d="M 0 420 C 80 380, 150 350, 250 360 C 340 365, 340 310, 430 300 C 520 290, 560 220, 660 220 C 760 220, 820 260, 900 280" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1.5"/>
-        <path d="M 0 430 C 80 390, 150 360, 250 370 C 340 375, 340 320, 430 310 C 520 300, 560 230, 660 230 C 760 230, 820 270, 900 290" fill="none" stroke="rgba(255,255,255,0.025)" stroke-width="0.5"/>
-        <text x="620" y="120" font-size="9" fill="rgba(255,255,255,0.05)" letter-spacing="3">BISCAYNE BAY</text>
-        <text x="620" y="140" font-size="7" fill="rgba(255,255,255,0.05)" letter-spacing="5">RESTRICTED</text>
-        <path d="M 0 60 H 900 M 0 180 H 900 M 0 300 H 900 M 0 420 H 900 M 0 540 H 900 M 150 0 V 640 M 300 0 V 640 M 450 0 V 640 M 600 0 V 640" stroke="rgba(255,255,255,0.022)" stroke-width="3"/>
-        <text x="12" y="630" font-size="7" fill="rgba(255,255,255,0.1)" font-family="JetBrains Mono, monospace">25°48'N 80°09'W</text>
-        <text x="760" y="630" font-size="7" fill="rgba(255,255,255,0.1)" font-family="JetBrains Mono, monospace">25°47'N 80°08'W</text>
+        <rect x="0" y="0" width="900" height="640" fill="#05070a" />
+        <path fill="#030a12" fill-opacity="0.96" d="M 508 0 L 497 38 L 521 112 L 484 175 L 516 268 L 479 318 L 512 405 L 481 478 L 519 555 L 492 640 L 900 640 L 900 0 Z" />
+        <rect x="0" y="0" width="900" height="640" fill="url(#dot-grid)" clip-path="url(#land-clip)" />
+        <use href="#coast" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" />
+        <path id="grid" d="M 0 148 H 900 M 0 308 H 900 M 0 468 H 900 M 212 0 V 640 M 438 0 V 640 M 662 0 V 640" stroke="rgba(255,255,255,0.012)" stroke-width="3" stroke-dasharray="4 6" />
+        <text x="638" y="288" font-size="8" fill="rgba(255,255,255,0.06)" letter-spacing="3" font-family="JetBrains Mono, monospace">BISCAYNE BAY</text>
+        <text x="644" y="304" font-size="6" fill="rgba(255,255,255,0.05)" letter-spacing="5" font-family="JetBrains Mono, monospace">RESTRICTED</text>
+        <text x="178" y="190" font-size="8" fill="rgba(255,255,255,0.055)" font-family="JetBrains Mono, monospace">MIAMI</text>
+        <text x="368" y="348" font-size="5" fill="rgba(255,255,255,0.05)" font-family="JetBrains Mono, monospace">GRID B-7</text>
+        <text x="10" y="628" font-size="7" fill="rgba(255,255,255,0.1)" font-family="JetBrains Mono, monospace">25°48'N 80°09'W</text>
+        <text x="742" y="628" font-size="7" fill="rgba(255,255,255,0.1)" font-family="JetBrains Mono, monospace">25°47'N 80°08'W</text>
       </svg>
 
       <main id="board" role="application" aria-label="District board"></main>
     </section>
 
+    <aside id="side-panel" class="side-panel" role="complementary" aria-label="District details">
+      <div class="panel-content">
+        <header class="panel-header">
+          <h2 class="panel-district-name" id="panel-district-name">—</h2>
+          <p class="panel-owner-line" id="panel-owner-line"></p>
+          <button type="button" class="panel-close" id="panel-close" aria-label="Close panel">&times;</button>
+        </header>
+        <div class="panel-stats" id="panel-stats"></div>
+        <div class="panel-stash" id="panel-stash"></div>
+        <div class="panel-prices" id="panel-prices"></div>
+        <div class="panel-actions" id="panel-actions"></div>
+        <div class="panel-buildings" id="panel-buildings"></div>
+        <div class="panel-dispatch" id="panel-dispatch"></div>
+      </div>
+    </aside>
+    </div>
+
     <footer id="bottom-bar"></footer>
+    <div id="action-panel-host" aria-live="polite"></div>
   </div>
 
-  <div id="sidebar" role="complementary"></div>
-
-  <script type="module" src="client/main.js"></script>
+  <script type="module" src="client/main.js?v=panel1"></script>
 </body>
 </html>

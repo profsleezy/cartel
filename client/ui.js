@@ -1,7 +1,224 @@
 // client/ui.js
-// Renders the non-board UI: sidebar, phase banner, timer.
+// Renders the non-board UI: sidebar, phase banner, timer, side panel.
 
 import { gameState, getPlayer } from "../game/state.js";
+
+let selectedDistrictId = null;
+
+const OWNER_NAME_COLORS = {
+  player1: "#6ee7b7",
+  enemy1: "#fca5a5",
+  enemy2: "#93c5fd",
+  enemy3: "#c4b5fd",
+  neutral: "rgba(255,255,255,0.4)",
+};
+
+export function getSelectedDistrictId() {
+  return selectedDistrictId;
+}
+
+export function closeDistrictPanel() {
+  const panel = document.getElementById("side-panel");
+  if (panel) panel.classList.remove("open");
+  document.body.classList.remove("side-panel-open");
+  selectedDistrictId = null;
+  const board = document.getElementById("board");
+  if (board)
+    board.querySelectorAll(".district.selected").forEach((el) => el.classList.remove("selected"));
+}
+
+export function openDistrictPanel(
+  id,
+  district,
+  { buyButtons = [], buildingList = [], attackControls, dealingControls } = {},
+) {
+  selectedDistrictId = id;
+  const panel = document.getElementById("side-panel");
+  if (panel) {
+    panel.classList.add("open");
+    document.body.classList.add("side-panel-open");
+  }
+
+  const nameEl = document.getElementById("panel-district-name");
+  const ownerEl = document.getElementById("panel-owner-line");
+  const owner = (district && district.owner) || "neutral";
+  const ownerLabel =
+    owner === "player1" ? "OWNED" : owner === "neutral" ? "NEUTRAL" : "ENEMY";
+  if (nameEl) {
+    nameEl.textContent = (district && district.name) || id;
+    nameEl.style.color = OWNER_NAME_COLORS[owner] || OWNER_NAME_COLORS.neutral;
+  }
+  if (ownerEl) ownerEl.textContent = ownerLabel;
+
+  const thugs = (district && district.thugs) || 0;
+  const buildings = (district && district.buildings) || [];
+  const heat = (district && district.heat) || 0;
+  const HEAT_CAP = 20;
+  const riskPct = Math.min(100, Math.round((heat / HEAT_CAP) * 100));
+
+  const statsEl = document.getElementById("panel-stats");
+  if (statsEl) {
+    const riskClass =
+      riskPct >= 70 ? "risk-high" : riskPct >= 30 ? "risk-mid" : "risk-low";
+    statsEl.innerHTML = `
+      <div class="panel-stat-card"><span class="panel-stat-label">Thugs</span><div class="panel-stat-value">${thugs}</div></div>
+      <div class="panel-stat-card"><span class="panel-stat-label">Buildings</span><div class="panel-stat-value">${buildings.length}/5</div></div>
+      <div class="panel-stat-card ${riskClass}"><span class="panel-stat-label">Risk</span><div class="panel-stat-value">${heat}/${HEAT_CAP}</div></div>
+    `;
+  }
+
+  const stash = (district && district.stash) || { coke: 0, weed: 0, heroin: 0 };
+  const stashEl = document.getElementById("panel-stash");
+  if (stashEl) {
+    stashEl.innerHTML = `
+      <div class="panel-section-title" style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Stash</div>
+      <div class="panel-row"><span class="panel-row-label"><span class="panel-row-dot coke"></span>Cocaine</span><span class="panel-row-value">${stash.coke || 0}</span></div>
+      <div class="panel-row"><span class="panel-row-label"><span class="panel-row-dot weed"></span>Weed</span><span class="panel-row-value">${stash.weed || 0}</span></div>
+      <div class="panel-row"><span class="panel-row-label"><span class="panel-row-dot heroin"></span>Heroin</span><span class="panel-row-value">${stash.heroin || 0}</span></div>
+    `;
+  }
+
+  const prices = (district && district.prices) || { coke: 0, weed: 0, heroin: 0 };
+  const priceArr = [
+    { k: "coke", label: "Coke", v: prices.coke || 0 },
+    { k: "weed", label: "Weed", v: prices.weed || 0 },
+    { k: "heroin", label: "Heroin", v: prices.heroin || 0 },
+  ];
+  const maxPrice = Math.max(...priceArr.map((p) => p.v));
+  const pricesEl = document.getElementById("panel-prices");
+  if (pricesEl) {
+    pricesEl.innerHTML = `
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Dealing prices here</div>
+      ${priceArr
+        .map(
+          (p) =>
+            `<div class="panel-row"><span class="panel-row-label">${p.label}</span><span class="panel-row-value ${p.v === maxPrice && maxPrice > 0 ? "highest" : ""}">$${(p.v || 0).toLocaleString()}</span></div>`,
+        )
+        .join("")}
+    `;
+  }
+
+  const actionsEl = document.getElementById("panel-actions");
+  if (actionsEl) {
+    let html = `<div class="panel-actions-title">${gameState.phase || "Buying"} phase</div>`;
+    if (attackControls) {
+      html += `<div style="margin-bottom:8px;"><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:4px;">Count: ${attackControls.selectedCount || 1}</div><input type="range" min="1" max="${attackControls.max || 1}" value="${attackControls.selectedCount || 1}" style="width:100%;" data-attack-count></div>`;
+      html += `<div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:6px;">Target: ${attackControls.targetId || "None"}</div>`;
+      html += `<button type="button" class="panel-action-btn accent" data-attack-confirm ${attackControls.confirmDisabled ? "disabled" : ""}>Confirm attack</button>`;
+    } else if (dealingControls && dealingControls.sections && dealingControls.sections.length) {
+      dealingControls.sections.forEach((section) => {
+        html += `<div style="font-size:8px;color:rgba(255,255,255,0.35);margin:8px 0 4px;">${section.emoji} ${section.productType} — ${section.stashAmt} available</div>`;
+        (section.targets || []).forEach((t) => {
+          html += `<div class="panel-row" style="align-items:center;"><span class="panel-row-label">${uiEscape(t.name)}</span><span class="panel-row-value">$${t.price}</span><input type="number" min="1" max="${t.maxQty}" value="1" class="deal-qty-in" data-deal-target-id="${t.id}" data-deal-type="${section.productType}" style="width:40px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:inherit;padding:4px;font-size:9px;"><button type="button" class="panel-action-btn accent" style="padding:4px 8px;margin:0;" data-deal-sell data-target-id="${t.id}" data-type="${section.productType}" ${t.disabled ? "disabled" : ""}>Sell</button></div>`;
+        });
+      });
+    } else if (Array.isArray(buyButtons) && buyButtons.length) {
+      buyButtons.forEach((b, i) => {
+        const isAccent = !b.disabled;
+        const label = b.label.replace(/\s*\(costs?\s*\$[\d,]+\)\s*$/i, "").trim();
+        const costMatch = b.label.match(/\$[\d,]+/);
+        const cost = costMatch ? costMatch[0] : "";
+        html += `<button type="button" class="panel-action-btn ${isAccent ? "accent" : ""}" ${b.disabled ? "disabled" : ""} data-action-index="${i}"><span class="panel-action-label">${uiEscape(label)}</span><span class="panel-action-cost">${cost}</span></button>`;
+      });
+    } else {
+      html += `<div style="font-size:9px;color:rgba(255,255,255,0.3);">No actions</div>`;
+    }
+    actionsEl.innerHTML = html;
+    if (dealingControls && dealingControls.sections) {
+      actionsEl.querySelectorAll("[data-deal-sell]").forEach((btn) => {
+        const targetId = btn.dataset.targetId;
+        const type = btn.dataset.type;
+        const section = (dealingControls.sections || []).find((s) => s.productType === type);
+        const target = section && (section.targets || []).find((t) => t.id === targetId);
+        if (target && typeof target.onSell === "function") {
+          btn.addEventListener("click", () => {
+            const qtyInput = actionsEl.querySelector(`.deal-qty-in[data-deal-target-id="${targetId}"][data-deal-type="${type}"]`);
+            const qty = Math.max(1, Math.min(parseInt(qtyInput && qtyInput.value, 10) || 1, target.maxQty));
+            target.onSell(qty);
+          });
+        }
+      });
+    } else if (attackControls) {
+      const range = actionsEl.querySelector("[data-attack-count]");
+      const confirmBtn = actionsEl.querySelector("[data-attack-confirm]");
+      if (range)
+        range.addEventListener("input", (e) => {
+          const v = parseInt(e.target.value, 10);
+          if (typeof attackControls.onCountChange === "function")
+            attackControls.onCountChange(v);
+          openDistrictPanel(id, gameState.districts.find((d) => d.id === id) || district, { buyButtons, buildingList, attackControls: { ...attackControls, selectedCount: v }, dealingControls });
+        });
+      if (confirmBtn && !attackControls.confirmDisabled)
+        confirmBtn.addEventListener("click", () => {
+          if (typeof attackControls.onConfirm === "function")
+            attackControls.onConfirm();
+        });
+    } else
+      buyButtons.forEach((b, i) => {
+        const btn = actionsEl.querySelector(`[data-action-index="${i}"]`);
+        if (btn && typeof b.onClick === "function")
+          btn.addEventListener("click", () => b.onClick());
+      });
+  }
+
+  const buildingsEl = document.getElementById("panel-buildings");
+  if (buildingsEl) {
+    buildingsEl.innerHTML = `
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Buildings</div>
+      ${(buildingList || []).length
+        ? (buildingList || [])
+            .map(
+              (b, i) =>
+                `<div class="panel-building-item"><span>${uiEscape(b.label)}</span><button type="button" class="panel-building-del" data-building-del="${i}">&times;</button></div>`,
+            )
+            .join("")
+        : '<div style="font-size:9px;color:rgba(255,255,255,0.3);">None</div>'}
+    `;
+    (buildingList || []).forEach((b, i) => {
+      const del = buildingsEl.querySelector(`[data-building-del="${i}"]`);
+      if (del && typeof b.onDelete === "function")
+        del.addEventListener("click", () => b.onDelete());
+    });
+  }
+
+  const dispatchEl = document.getElementById("panel-dispatch");
+  if (dispatchEl) {
+    const news = Array.isArray(gameState.news) ? gameState.news : [];
+    const entries = news.slice(-12).reverse();
+    dispatchEl.innerHTML = `
+      <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Dispatch</div>
+      ${entries.length
+        ? entries
+            .map((n) => {
+              const text = (n && n.text) || String(n);
+              const ts = n && n.ts ? new Date(n.ts).toLocaleTimeString() : "";
+              let type = "neutral";
+              if (/raid|raided/i.test(text)) type = "raid";
+              else if (/win|captured|gain/i.test(text)) type = "win";
+              else if (/loss|repelled|lost/i.test(text)) type = "loss";
+              return `<div class="panel-dispatch-entry"><div class="panel-dispatch-text ${type}">${uiEscape(text)}</div><div class="panel-dispatch-ts">${ts}</div></div>`;
+            })
+            .join("")
+        : '<div style="font-size:9px;color:rgba(255,255,255,0.3);">No activity</div>'}
+    `;
+  }
+}
+
+export function initPanelCloseHandlers() {
+  const panel = document.getElementById("side-panel");
+  const closeBtn = document.getElementById("panel-close");
+  if (closeBtn) closeBtn.addEventListener("click", () => closeDistrictPanel());
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDistrictPanel();
+  });
+  document.addEventListener("click", (e) => {
+    if (!panel || !panel.classList.contains("open")) return;
+    if (panel.contains(e.target)) return;
+    // Don't close when the click was on the board (district click that opened the panel)
+    if (e.target.closest("#board")) return;
+    closeDistrictPanel();
+  });
+}
 
 function formatCurrency(value) {
   if (typeof value !== "number") return "$0";
@@ -19,82 +236,12 @@ const EFFECT_META = {
   extra_attack: { icon: "⚔️", label: "Blitz" },
 };
 
+/** Renders the player hand into #hand-area (created by renderBottomBar). */
 export function renderSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  if (!sidebar) return;
-
-  sidebar.innerHTML = "";
-
-  const title = document.createElement("h2");
-  title.textContent = "Player";
-
-  const list = document.createElement("ul");
-
-  const player = getPlayer("player1") || { cash: 0, pushers: 0 };
-
-  // total stash across all player1-owned districts
-  const ownedDistricts = gameState.districts.filter(
-    (d) => d.owner === "player1",
-  );
-  const totalCoke = ownedDistricts.reduce(
-    (s, d) => s + ((d.stash && d.stash.coke) || 0),
-    0,
-  );
-  const totalWeed = ownedDistricts.reduce(
-    (s, d) => s + ((d.stash && d.stash.weed) || 0),
-    0,
-  );
-  const totalHeroin = ownedDistricts.reduce(
-    (s, d) => s + ((d.stash && d.stash.heroin) || 0),
-    0,
-  );
-  const totalProduct = totalCoke + totalWeed + totalHeroin;
-
-  const roundedCash = Math.round((player.cash || 0) / 5) * 5;
-  const maxRisk = Math.max(0, ...ownedDistricts.map((d) => d.heat || 0));
-
-  const items = [
-    ["Cash", formatCurrency(roundedCash)],
-    ["Max Risk", `${maxRisk}`],
-    ["Pushers", `${player.pushers || 0}`],
-    ["Product", `${totalProduct}`],
-  ];
-
-  items.forEach(([label, value]) => {
-    const li = document.createElement("li");
-    const span = document.createElement("span");
-    span.textContent = label;
-    const strong = document.createElement("strong");
-    strong.textContent = value;
-    li.appendChild(span);
-    li.appendChild(strong);
-    list.appendChild(li);
-  });
-
-  const tip = document.createElement("div");
-  tip.className = "sidebar-tip";
-  tip.textContent = "Click an owned district to see actions.";
-
-  sidebar.appendChild(title);
-  sidebar.appendChild(list);
-
-  // per-product stash totals across all owned districts
-  const prodBox = document.createElement("div");
-  prodBox.className = "product-breakdown";
-  prodBox.innerHTML = `
-    <div>🧪 ${totalCoke}</div>
-    <div>🌿 ${totalWeed}</div>
-    <div>⚗️ ${totalHeroin}</div>
-  `;
-  sidebar.appendChild(prodBox);
-
-  sidebar.appendChild(tip);
-
-  // active long-term card effects for this round
-  renderActiveEffects(sidebar);
-
-  // player's card hand
-  renderHand(sidebar);
+  const handArea = document.getElementById("hand-area");
+  if (!handArea) return;
+  handArea.innerHTML = "";
+  renderHand(handArea);
 }
 
 // Track which event is currently displayed so we only restart the fade
@@ -105,8 +252,7 @@ let _fadeTimerId = null;
 
 /**
  * Create or update the fixed event-tile callout positioned below the phase banner.
- * Each new event is shown at full opacity and fades out after 15 seconds.
- * Hidden immediately when there is no current event.
+ * New event fades in (0.4s); after 15s fades out (1.2s) then display none.
  */
 export function renderEventTile() {
   const intel = document.getElementById("intel-strip");
@@ -115,12 +261,50 @@ export function renderEventTile() {
 
   if (!intel || !intelText) return;
   if (!ev) {
+    if (_fadeTimerId) {
+      clearTimeout(_fadeTimerId);
+      _fadeTimerId = null;
+    }
+    _shownEventKey = null;
     intel.classList.add("hidden");
+    intel.style.display = "";
+    intel.style.opacity = "";
+    intel.style.transition = "";
     return;
   }
 
-  intel.classList.remove("hidden");
-  intelText.textContent = `${ev.name}: ${ev.description}`;
+  const eventKey = `${gameState.roundNumber || 0}:${ev.id || ev.name || ""}`;
+  const isNew = eventKey !== _shownEventKey;
+
+  if (isNew) {
+    if (_fadeTimerId) {
+      clearTimeout(_fadeTimerId);
+      _fadeTimerId = null;
+    }
+    _shownEventKey = eventKey;
+    intel.classList.remove("intel-fade-out", "hidden");
+    intel.style.display = "flex";
+    intel.style.opacity = "0";
+    intel.style.transition = "opacity 0.4s ease";
+    intelText.textContent = `${ev.name}: ${ev.description}`;
+    requestAnimationFrame(() => {
+      intel.style.opacity = "1";
+    });
+    _fadeTimerId = setTimeout(() => {
+      _fadeTimerId = null;
+      intel.style.transition = "opacity 1.2s ease";
+      intel.classList.add("intel-fade-out");
+      setTimeout(() => {
+        intel.style.display = "none";
+        intel.classList.remove("intel-fade-out");
+        intel.style.opacity = "";
+        intel.style.transition = "";
+        _shownEventKey = null;
+      }, 1200);
+    }, 15000);
+  } else {
+    intelText.textContent = `${ev.name}: ${ev.description}`;
+  }
 }
 
 function renderTopBar(phase, timer, roundNumber) {
@@ -135,11 +319,16 @@ function renderTopBar(phase, timer, roundNumber) {
     }
   });
 
-  const ring = document.querySelector(".timer-ring circle");
+  const ringWrap = document.querySelector(".timer-ring");
+  const ring = ringWrap && ringWrap.querySelector("circle");
   if (ring) {
     const remain = Math.max(0, Math.min(45, timer));
     const pct = 1 - remain / 45;
     ring.style.strokeDashoffset = `${50 * pct}`;
+  }
+  if (ringWrap) {
+    ringWrap.classList.toggle("timer-warning", timer <= 10 && timer > 5);
+    ringWrap.classList.toggle("timer-danger", timer <= 5);
   }
 
   const timerSeconds = document.getElementById("timer-seconds");
@@ -154,6 +343,14 @@ function renderBottomBar() {
   if (!container) return;
   container.innerHTML = "";
 
+  const handArea = document.createElement("div");
+  handArea.id = "hand-area";
+  handArea.className = "hand-area";
+  container.appendChild(handArea);
+
+  const stripsRow = document.createElement("div");
+  stripsRow.className = "player-strips-row";
+
   const defaultPlayers = [
     { id: "player1", name: "Jade", codename: "Viper", cash: 50000, dist: 4, push: 2, accent: "#10b981" },
     { id: "enemy1", name: "Crimson", codename: "Red", cash: 36000, dist: 3, push: 3, accent: "#f87171" },
@@ -161,17 +358,26 @@ function renderBottomBar() {
     { id: "enemy3", name: "Violet", codename: "Wraith", cash: 31700, dist: 3, push: 2, accent: "#a78bfa" },
   ];
 
-  const players = gameState.players && gameState.players.length > 0 ? gameState.players : defaultPlayers;
+  const rawPlayers = gameState.players && gameState.players.length > 0 ? gameState.players : [];
+  const districtCount = (pid) => (gameState.districts || []).filter((d) => d.owner === pid).length;
 
   for (let i = 0; i < 4; i += 1) {
-    const p = players[i] || defaultPlayers[i];
+    const def = defaultPlayers[i];
+    const raw = rawPlayers[i] || {};
+    const p = {
+      ...def,
+      ...raw,
+      dist: raw.dist ?? districtCount(raw.id || def.id),
+      push: raw.push ?? raw.pushers ?? def.push,
+      cash: raw.cash ?? def.cash,
+    };
     const strip = document.createElement("div");
     strip.className = "player-strip" + (i === 0 ? " local" : "");
 
     const dot = document.createElement("div");
     dot.className = "player-dot";
     dot.style.background = p.accent;
-    dot.style.boxShadow = `0 0 8px ${p.accent}66`;
+    dot.style.boxShadow = `0 0 8px ${p.accent}99`;
 
     const meta = document.createElement("div");
     meta.className = "player-meta";
@@ -190,8 +396,9 @@ function renderBottomBar() {
     strip.appendChild(dot);
     strip.appendChild(meta);
     strip.appendChild(stats);
-    container.appendChild(strip);
+    stripsRow.appendChild(strip);
   }
+  container.appendChild(stripsRow);
 }
 
 export function renderPhaseBanner(phase) {
@@ -209,8 +416,22 @@ function renderGameUi() {
 }
 
 // expose helper so other code can update the bar if needed
+let _phaseFlashInitialized = false;
+
 export function renderGameStatus() {
   renderGameUi();
+}
+
+/** Call when phase has just changed (e.detail.phaseChanged) to play the phase pill flash. Skips on first load. */
+export function triggerPhaseChangeFlash() {
+  if (!_phaseFlashInitialized) {
+    _phaseFlashInitialized = true;
+    return;
+  }
+  const pill = document.getElementById("phase-pill");
+  if (!pill) return;
+  pill.classList.add("phase-change-flash");
+  setTimeout(() => pill.classList.remove("phase-change-flash"), 500);
 }
 
 /**
@@ -440,18 +661,6 @@ export function showGameOver(youWon) {
     });
 }
 
-export function renderPhaseBanner(phase) {
-  const el = document.getElementById("phase-banner");
-  if (!el) return;
-  el.textContent = `Phase: ${phase}`;
-}
-
-export function renderTimer(seconds) {
-  const el = document.getElementById("timer");
-  if (!el) return;
-  el.textContent = `${seconds}s`;
-}
-
 /**
  * Show an action panel for the given district.
  *
@@ -479,8 +688,8 @@ export function showActionPanel(
     dealingControls,
   } = {},
 ) {
-  const sidebar = document.getElementById("sidebar");
-  if (!sidebar) return;
+  const host = document.getElementById("action-panel-host");
+  if (!host) return;
 
   const panel = document.createElement("div");
   panel.className = "action-panel";
@@ -656,14 +865,14 @@ export function showActionPanel(
   }
 
   // replace any existing action panel
-  const prev = sidebar.querySelector(".action-panel");
+  const prev = host.querySelector(".action-panel");
   if (prev) prev.remove();
-  sidebar.appendChild(panel);
+  host.appendChild(panel);
 }
 
 export function clearActionPanel() {
-  const sidebar = document.getElementById("sidebar");
-  if (!sidebar) return;
-  const prev = sidebar.querySelector(".action-panel");
+  const host = document.getElementById("action-panel-host");
+  if (!host) return;
+  const prev = host.querySelector(".action-panel");
   if (prev) prev.remove();
 }

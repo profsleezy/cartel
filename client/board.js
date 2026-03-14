@@ -137,7 +137,7 @@ export function updateDistrict(districtId, newData) {
   }
 
   if (newData && newData.pendingAttack) {
-    el.classList.add("selected");
+    el.classList.add("pending-attack");
   }
 
   el.innerHTML = `

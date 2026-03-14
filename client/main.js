@@ -5,6 +5,8 @@ import {
   renderEventTile,
   clearActionPanel,
   showGameOver,
+  initPanelCloseHandlers,
+  triggerPhaseChangeFlash,
 } from "./ui.js";
 import { renderBoard, updateDistrict, highlightTargets } from "./board.js";
 import { gameState, initGameState } from "../game/state.js";
@@ -20,6 +22,7 @@ window.addEventListener("gameStateChanged", (e) => {
   renderGameStatus();
   renderEventTile();
   if (e.detail.phaseChanged) {
+    triggerPhaseChangeFlash();
     renderSidebar();
     clearActionPanel();
     highlightTargets([]);
@@ -49,4 +52,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Wire board and sidebar click handlers
   initInput();
+  initPanelCloseHandlers();
 });

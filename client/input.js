@@ -1,7 +1,14 @@
 // client/input.js
 // Handles user interactions and delegates DOM rendering to ui.js and board.js
 
-import { showActionPanel, renderSidebar, clearActionPanel } from "./ui.js";
+import {
+  showActionPanel,
+  renderSidebar,
+  clearActionPanel,
+  openDistrictPanel,
+  closeDistrictPanel,
+  getSelectedDistrictId,
+} from "./ui.js";
 import { playCard, playCardOnDistrict, getCardById } from "../game/cards.js";
 import {
   buyBuilding,
@@ -91,7 +98,7 @@ function showDealPanel(sourceId) {
     },
   );
 
-  showActionPanel(sourceId, {
+  openDistrictPanel(sourceId, src, {
     dealingControls: {
       sourceName: src.name,
       stash: {
@@ -133,12 +140,30 @@ export function initInput() {
     });
   }
 
+  function setPanelSelection(districtId) {
+    const board = document.getElementById("board");
+    if (!board) return;
+    board.querySelectorAll(".district").forEach((tile) => {
+      tile.classList.remove("selected");
+      if (tile.dataset.id === districtId) {
+        tile.classList.add("selected", "select-pulse");
+        setTimeout(() => tile.classList.remove("select-pulse"), 400);
+      }
+    });
+  }
+
   board.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-id]");
     if (!el) return;
     const id = el.dataset.id;
     const d = gameState.districts.find((x) => x.id === id);
     if (!d) return;
+
+    // Re-click same district while panel open → close panel
+    if (getSelectedDistrictId() === id) {
+      closeDistrictPanel();
+      return;
+    }
 
     // If we're in pending card-target mode, apply card to clicked owned district
     if (pendingCardId && d.owner === "player1") {
@@ -148,7 +173,8 @@ export function initInput() {
         highlightTargets([]);
         updateDistrict(id, d);
         renderSidebar();
-        showActionPanel(id, { buyButtons: [{ label: "Applied card", disabled: true }] });
+        setPanelSelection(id);
+        openDistrictPanel(id, d, { buyButtons: [{ label: "Applied card", disabled: true }] });
       } else {
         clearCardTargeting();
       }
@@ -172,7 +198,8 @@ export function initInput() {
             selectedSourceId = null;
             selectedTargetId = null;
             highlightTargets([]);
-            showActionPanel(id, {
+            setPanelSelection(id);
+            openDistrictPanel(id, d, {
               buyButtons: [{ label: "Attack used this round", disabled: true }],
             });
             return;
@@ -185,7 +212,8 @@ export function initInput() {
         if ((d.thugs || 0) <= 0) {
           selectedSourceId = null;
           highlightTargets([]);
-          showActionPanel(id, {
+          setPanelSelection(id);
+          openDistrictPanel(id, d, {
             buyButtons: [{ label: "No thugs available", disabled: true }],
           });
           return;
@@ -196,7 +224,8 @@ export function initInput() {
         highlightTargets(valid);
         selectedCount = Math.min(Math.max(1, selectedCount || 1), d.thugs || 1);
 
-        showActionPanel(id, {
+        setPanelSelection(id);
+        openDistrictPanel(id, d, {
           attackControls: {
             selectedCount,
             max: d.thugs || 1,
@@ -231,24 +260,26 @@ export function initInput() {
           // Redraw highlights: valid targets in red, selected target in gold
           highlightTargets(valid, selectedTargetId);
 
-          showActionPanel(selectedSourceId, {
-            attackControls: {
-              selectedCount,
-              max: selectedSource.thugs || 1,
-              targetId: selectedTargetId,
-              confirmDisabled: false,
-              onCountChange: (v) => {
-                selectedCount = v;
+          const src = gameState.districts.find((x) => x.id === selectedSourceId);
+          if (src)
+            openDistrictPanel(selectedSourceId, src, {
+              attackControls: {
+                selectedCount,
+                max: selectedSource.thugs || 1,
+                targetId: selectedTargetId,
+                confirmDisabled: false,
+                onCountChange: (v) => {
+                  selectedCount = v;
+                },
+                onConfirm: () => {
+                  if (!selectedSourceId || !selectedTargetId) return;
+                  _queueAttack(selectedSourceId, selectedTargetId, selectedCount);
+                  selectedSourceId = null;
+                  selectedTargetId = null;
+                  selectedCount = 1;
+                },
               },
-              onConfirm: () => {
-                if (!selectedSourceId || !selectedTargetId) return;
-                _queueAttack(selectedSourceId, selectedTargetId, selectedCount);
-                selectedSourceId = null;
-                selectedTargetId = null;
-                selectedCount = 1;
-              },
-            },
-          });
+            });
         }
       }
       return;
@@ -331,7 +362,8 @@ export function initInput() {
         },
       });
 
-      showActionPanel(id, { buyButtons, buildingList });
+      setPanelSelection(id);
+      openDistrictPanel(id, d, { buyButtons, buildingList });
       return;
     }
 
@@ -341,17 +373,21 @@ export function initInput() {
       const totalStash =
         (stash.coke || 0) + (stash.weed || 0) + (stash.heroin || 0);
       if (totalStash > 0) {
+        setPanelSelection(id);
         showDealPanel(id);
+        return;
       }
     }
+
+    // ── Any other district click: open panel with read-only details ───────────
+    setPanelSelection(id);
+    openDistrictPanel(id, d, {});
   });
 
-  // ── Card clicks (sidebar) ─────────────────────────────────────────────────
-  // Cards are rendered in the sidebar by ui.js with data-card-id attributes.
-  // We listen here so all interaction logic stays in input.js.
-  const sidebar = document.getElementById("sidebar");
-  if (sidebar) {
-    sidebar.addEventListener("click", (ev) => {
+  // ── Card clicks (hand in bottom bar) ─────────────────────────────────────
+  const bottomBar = document.getElementById("bottom-bar");
+  if (bottomBar) {
+    bottomBar.addEventListener("click", (ev) => {
       const cardEl = ev.target.closest("[data-card-id]");
       if (!cardEl) return;
       const cardId = cardEl.dataset.cardId;
