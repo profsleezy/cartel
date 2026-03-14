@@ -1,35 +1,30 @@
 // game/economy.js
-// Economic actions: production and buying infrastructure (labs)
+// Economic actions: production and buying infrastructure
 
-import { gameState } from './state.js';
-import { addHeat, rollRaid, triggerRaid } from './heat.js';
+import { gameState, getPlayer } from "./state.js";
+import { addHeat, rollRaid, triggerRaid } from "./heat.js";
 
-const STORAGE_CAP = 5; // max product units per type a district can store
 // Building cost ladder (per-player escalation). Max 3 purchases per type per round.
 const BUILDING_COSTS = [100, 180, 300];
 
 /**
- * Add one product to the district up to STORAGE_CAP.
- * Returns true if product was added, false if already full or not producing.
+ * Run production on a district: deposit units into district.stash for each building.
+ * Random 1–3 units per building. Returns true if any product was added.
  */
-export function produceProduct(districtId){
-  const d = gameState.districts.find(x => x.id === districtId);
-  if(!d) return false;
-  if(d.owner !== 'owned') return false;
-  // produce 1 unit per building of corresponding type, but deposit into player.inventory
-  // building type -> product type mapping
-  const mapping = { lab: 'coke', growhouse: 'weed', refinery: 'heroin' };
+export function produceProduct(districtId) {
+  const d = gameState.districts.find((x) => x.id === districtId);
+  if (!d) return false;
+  if (d.owner !== "player1") return false;
+  const mapping = { lab: "coke", growhouse: "weed", refinery: "heroin" };
   let changed = false;
-  const player = gameState.players && gameState.players[0];
-  if(!player) return false;
-  if(!player.inventory) player.inventory = { coke:0, weed:0, heroin:0 };
-  if(Array.isArray(d.buildings)){
-    d.buildings.forEach(b => {
+  if (!d.stash) d.stash = { coke: 0, weed: 0, heroin: 0 };
+  if (Array.isArray(d.buildings)) {
+    d.buildings.forEach((b) => {
       const ptype = mapping[b.type];
-      if(!ptype) return;
-      // add a random 1-3 units to player inventory per building
-      const amount = Math.floor(Math.random() * 3) + 1; // 1..3
-      player.inventory[ptype] = (player.inventory[ptype] || 0) + amount;
+      if (!ptype) return;
+      // 1..3 units into the district's own stash
+      const amount = Math.floor(Math.random() * 3) + 1;
+      d.stash[ptype] = (d.stash[ptype] || 0) + amount;
       changed = true;
     });
   }
@@ -39,160 +34,220 @@ export function produceProduct(districtId){
 /**
  * Run production over all districts. Returns array of district ids that changed.
  */
-export function runProduction(){
+export function runProduction() {
   const changed = [];
-  gameState.districts.forEach(d => {
+  gameState.districts.forEach((d) => {
     const added = produceProduct(d.id);
-    if(added) changed.push(d.id);
+    if (added) changed.push(d.id);
   });
   return changed;
 }
 
 /**
- * Attempt to buy a lab on behalf of the first player.
- * Deducts cash and sets d.labs = true. Returns { success, message, district }.
+ * Attempt to buy a building on behalf of player1.
+ * Returns { success, message, district, cost }.
  */
-export function buyBuilding(districtId, type){
-  const player = gameState.players[0];
-  if(!player) return { success:false, message:'No player' };
-  const d = gameState.districts.find(x => x.id === districtId);
-  if(!d) return { success:false, message:'District not found' };
-  if(d.owner !== 'owned') return { success:false, message:'Cannot buy building on non-owned district' };
-  if(!Array.isArray(d.buildings)) d.buildings = [];
-  if(d.buildings.length >= 5) return { success:false, message:'District has max buildings' };
-  // determine cost based on player's per-round purchases
-  if(!player.buildingsBoughtThisRound) player.buildingsBoughtThisRound = { lab:0, growhouse:0, refinery:0 };
+export function buyBuilding(districtId, type) {
+  const player = getPlayer("player1");
+  if (!player) return { success: false, message: "No player" };
+  const d = gameState.districts.find((x) => x.id === districtId);
+  if (!d) return { success: false, message: "District not found" };
+  if (d.owner !== "player1")
+    return {
+      success: false,
+      message: "Cannot buy building on non-owned district",
+    };
+  if (!Array.isArray(d.buildings)) d.buildings = [];
+  if (d.buildings.length >= 5)
+    return { success: false, message: "District has max buildings" };
+  if (!player.buildingsBoughtThisRound)
+    player.buildingsBoughtThisRound = { lab: 0, growhouse: 0, refinery: 0 };
   const alreadyBought = player.buildingsBoughtThisRound[type] || 0;
-  // enforce max 3 purchases of the same type per round
-  if(alreadyBought >= 3) return { success:false, message:'Reached per-round purchase limit for this building type' };
+  if (alreadyBought >= 3)
+    return {
+      success: false,
+      message: "Reached per-round purchase limit for this building type",
+    };
   const idx = Math.min(alreadyBought, BUILDING_COSTS.length - 1);
-  // cost rounded to nearest 5 per rules
   const cost = Math.round(BUILDING_COSTS[idx] / 5) * 5;
-  if(player.cash < cost) return { success:false, message:'Insufficient cash', cost };
-
+  if (player.cash < cost)
+    return { success: false, message: "Insufficient cash", cost };
   player.cash -= cost;
   player.buildingsBoughtThisRound[type] = alreadyBought + 1;
   d.buildings.push({ type });
-
-  return { success:true, message:'Building purchased', district: d, cost };
+  return { success: true, message: "Building purchased", district: d, cost };
 }
 
 /**
- * Hire thug(s) on a district. Uses same escalating cost ladder per-player per-round.
- * count defaults to 1. Returns { success, message, district, cost }
+ * Hire thug(s) on a district. Escalating cost per round.
+ * Returns { success, message, district, cost, hired }.
  */
-export function hireThugs(districtId, count = 1){
-  const player = gameState.players[0];
-  if(!player) return { success:false, message:'No player' };
-  const d = gameState.districts.find(x => x.id === districtId);
-  if(!d) return { success:false, message:'District not found' };
-  if(d.owner !== 'owned') return { success:false, message:'Cannot hire on non-owned district' };
-  if(!Array.isArray(d.buildings)) d.buildings = d.buildings || [];
-  if(typeof d.thugs !== 'number') d.thugs = 0;
-
-  // per-round escalation: track thugs hired this round
-  if(typeof player.thugsHiredThisRound !== 'number') player.thugsHiredThisRound = 0;
-  const allowed = Math.max(0, 3 - player.thugsHiredThisRound); // max 3 per round
-  if(allowed <= 0) return { success:false, message:'Reached per-round hire limit' };
+export function hireThugs(districtId, count = 1) {
+  const player = getPlayer("player1");
+  if (!player) return { success: false, message: "No player" };
+  const d = gameState.districts.find((x) => x.id === districtId);
+  if (!d) return { success: false, message: "District not found" };
+  if (d.owner !== "player1")
+    return { success: false, message: "Cannot hire on non-owned district" };
+  if (!Array.isArray(d.buildings)) d.buildings = d.buildings || [];
+  if (typeof d.thugs !== "number") d.thugs = 0;
+  if (typeof player.thugsHiredThisRound !== "number")
+    player.thugsHiredThisRound = 0;
+  const allowed = Math.max(0, 3 - player.thugsHiredThisRound);
+  if (allowed <= 0)
+    return { success: false, message: "Reached per-round hire limit" };
   const toHire = Math.min(allowed, count);
-
-  // compute cost for each unit using escalation: each subsequent hire uses next cost
   let totalCost = 0;
-  for(let i=0;i<toHire;i++){
-    const idx = Math.min(player.thugsHiredThisRound + i, BUILDING_COSTS.length - 1);
+  for (let i = 0; i < toHire; i++) {
+    const idx = Math.min(
+      player.thugsHiredThisRound + i,
+      BUILDING_COSTS.length - 1,
+    );
     totalCost += BUILDING_COSTS[idx];
   }
   totalCost = Math.round(totalCost / 5) * 5;
-  if(player.cash < totalCost) return { success:false, message:'Insufficient cash', cost: totalCost };
-
+  if (player.cash < totalCost)
+    return { success: false, message: "Insufficient cash", cost: totalCost };
   player.cash -= totalCost;
   player.cash = Math.round(player.cash / 5) * 5;
   d.thugs = (d.thugs || 0) + toHire;
   player.thugsHiredThisRound = (player.thugsHiredThisRound || 0) + toHire;
-
-  return { success:true, message:'Hired thugs', district: d, cost: totalCost, hired: toHire };
+  return {
+    success: true,
+    message: "Hired thugs",
+    district: d,
+    cost: totalCost,
+    hired: toHire,
+  };
 }
 
 /**
- * Buy a pusher for the player. Cost assumed $50 (rounded to nearest 5).
+ * Buy a pusher for player1. Cost $150.
+ * Returns { success, message, pushers, cost }.
  */
-export function buyPusher(){
-  const player = gameState.players[0];
-  if(!player) return { success:false, message:'No player' };
-  const cost = Math.round(50 / 5) * 5;
-  if(player.cash < cost) return { success:false, message:'Insufficient cash', cost };
+export function buyPusher() {
+  const player = getPlayer("player1");
+  if (!player) return { success: false, message: "No player" };
+  const cost = Math.round(150 / 5) * 5;
+  if (player.cash < cost)
+    return { success: false, message: "Insufficient cash", cost };
   player.cash -= cost;
   player.pushers = (player.pushers || 0) + 1;
-  // round cash per rules
   player.cash = Math.round(player.cash / 5) * 5;
-  return { success:true, message:'Bought pusher', pushers: player.pushers, cost };
+  return {
+    success: true,
+    message: "Bought pusher",
+    pushers: player.pushers,
+    cost,
+  };
 }
 
 /**
- * Remove a building from a district by index and refund half the base cost (50).
- * Returns { success, message, district, refund }
+ * Remove a building from a district by index. Refunds $50.
+ * Returns { success, message, district, refund }.
  */
-export function deleteBuilding(districtId, buildingIndex){
-  const player = gameState.players[0];
-  if(!player) return { success:false, message:'No player' };
-  const d = gameState.districts.find(x => x.id === districtId);
-  if(!d) return { success:false, message:'District not found' };
-  if(d.owner !== 'owned') return { success:false, message:'Cannot delete building on non-owned district' };
-  if(!Array.isArray(d.buildings)) d.buildings = [];
-  if(buildingIndex < 0 || buildingIndex >= d.buildings.length) return { success:false, message:'Invalid building index' };
-
-  // remove building
-  const removed = d.buildings.splice(buildingIndex, 1);
-  // refund half of base cost 100 => 50 (rounded to nearest 5)
+export function deleteBuilding(districtId, buildingIndex) {
+  const player = getPlayer("player1");
+  if (!player) return { success: false, message: "No player" };
+  const d = gameState.districts.find((x) => x.id === districtId);
+  if (!d) return { success: false, message: "District not found" };
+  if (d.owner !== "player1")
+    return {
+      success: false,
+      message: "Cannot delete building on non-owned district",
+    };
+  if (!Array.isArray(d.buildings)) d.buildings = [];
+  if (buildingIndex < 0 || buildingIndex >= d.buildings.length)
+    return { success: false, message: "Invalid building index" };
+  d.buildings.splice(buildingIndex, 1);
   const refund = Math.round(50 / 5) * 5;
   player.cash += refund;
-
-  return { success:true, message:'Building removed', district: d, refund };
+  return { success: true, message: "Building removed", district: d, refund };
 }
 
 /**
- * Sell one unit of product of the given type from the district.
- * Adds cash to the first player according to district prices and increases heat.
- * Returns { success, message, district, amount }
+ * Sell product from a source district's stash at a target district.
+ *
+ * sourceDistrictId — district where product is stored
+ * targetDistrictId — district where the sale occurs (sets price and takes heat)
+ * productType      — 'coke' | 'weed' | 'heroin'
+ * quantity         — units to sell (default 1)
+ *
+ * Pusher cap: player.pushers * 2 total units per round (tracked via soldThisRound).
+ * Returns { success, message, sourceDistrict, targetDistrict, amount, raided }.
  */
-// Simplified dealing: sells from player.inventory at the given district's dealingPrices
-export function dealProduct(districtId, productType = 'coke'){
-  const player = gameState.players[0];
-  if(!player) return { success:false, message:'No player' };
-  const d = gameState.districts.find(x => x.id === districtId);
-  if(!d) return { success:false, message:'District not found' };
-  if(d.owner !== 'owned') return { success:false, message:'District must be owned to sell here' };
-  if(d.raided) return { success:false, message:'District is raided' };
-  if(!player.inventory || (player.inventory[productType] || 0) <= 0) return { success:false, message:'No product in player inventory' };
+export function dealProduct(
+  sourceDistrictId,
+  targetDistrictId,
+  productType = "coke",
+  quantity = 1,
+) {
+  const player = getPlayer("player1");
+  if (!player) return { success: false, message: "No player" };
 
-  // enforce pusher-based selling limit: each pusher allows selling 2 products per round
-  const pushers = player.pushers || 0;
-  const maxSells = pushers * 2;
-  if(typeof player.soldThisRound !== 'number') player.soldThisRound = 0;
-  if(player.soldThisRound >= maxSells) return { success:false, message:'No available pushers capacity to sell this round' };
+  const src = gameState.districts.find((x) => x.id === sourceDistrictId);
+  if (!src) return { success: false, message: "Source district not found" };
+  if (!src.stash) src.stash = { coke: 0, weed: 0, heroin: 0 };
+  if ((src.stash[productType] || 0) < quantity)
+    return { success: false, message: "Insufficient product in source stash" };
 
-  // determine price from district's dealingPrices (may have been generated by phases). Round to nearest 5.
-  let priceUnrounded = (d.dealingPrices && d.dealingPrices[productType]) ? d.dealingPrices[productType] : ((d.prices && d.prices[productType]) ? d.prices[productType] : 100);
-  const price = Math.round(priceUnrounded / 5) * 5;
+  const tgt = gameState.districts.find((x) => x.id === targetDistrictId);
+  if (!tgt) return { success: false, message: "Target district not found" };
+  if (tgt.owner !== "player1")
+    return {
+      success: false,
+      message: "Target district must be owned to sell here",
+    };
+  if (tgt.raided)
+    return { success: false, message: "Target district is raided" };
 
-  // remove one unit from player inventory
-  player.inventory[productType] = (player.inventory[productType] || 0) - 1;
-  // record sale
-  player.soldThisRound = (player.soldThisRound || 0) + 1;
-  // add rounded cash
-  player.cash += price;
-  // ensure cash rounded to nearest 5 (keep whole dollars but comply with rule)
-  player.cash = Math.round(player.cash / 5) * 5;
+  // pusher capacity check
+  const maxSells = (player.pushers || 0) * 2;
+  if (typeof player.soldThisRound !== "number") player.soldThisRound = 0;
+  if (player.soldThisRound + quantity > maxSells)
+    return {
+      success: false,
+      message: "Exceeds pusher capacity for this round",
+    };
 
-  // increase heat at the district where dealing occurs
-  addHeat(districtId, 2);
+  // price from target district's dealingPrices, rounded to nearest 5
+  const rawPrice =
+    tgt.dealingPrices && tgt.dealingPrices[productType]
+      ? tgt.dealingPrices[productType]
+      : tgt.prices && tgt.prices[productType]
+        ? tgt.prices[productType]
+        : 100;
+  const pricePerUnit = Math.round(rawPrice / 5) * 5;
+  const totalAmount = pricePerUnit * quantity;
 
-  // probabilistic raid check at district
-  const raidedNow = rollRaid(districtId);
-  if(raidedNow){
-    triggerRaid(districtId);
-    return { success:true, message:'Sold product', district: d, amount: price, raided: true };
+  // deduct from source stash
+  src.stash[productType] -= quantity;
+
+  // record sale and pay player
+  player.soldThisRound += quantity;
+  player.cash = Math.round((player.cash + totalAmount) / 5) * 5;
+
+  // heat and raid on the target district
+  addHeat(targetDistrictId, quantity);
+  const raidedNow = rollRaid(targetDistrictId);
+  if (raidedNow) {
+    triggerRaid(targetDistrictId);
+    return {
+      success: true,
+      message: "Sold product",
+      sourceDistrict: src,
+      targetDistrict: tgt,
+      amount: totalAmount,
+      raided: true,
+    };
   }
 
-  return { success:true, message:'Sold product', district: d, amount: price, raided: false };
+  return {
+    success: true,
+    message: "Sold product",
+    sourceDistrict: src,
+    targetDistrict: tgt,
+    amount: totalAmount,
+    raided: false,
+  };
 }

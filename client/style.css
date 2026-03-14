@@ -1,66 +1,310 @@
 :root {
-  --bg: #0d0d0d;
-  --surface: #1a1a1a;
-  --accent: #e94560;
-  --text: #f0f0f0;
-  --owned: #2a4a3e;
-  --enemy: #4a2a2a;
-  --neutral: #2a2a2a;
-  --heat-low: #f0c040;
-  --heat-high: #e94560;
+    --bg: #0d0d0d;
+    --surface: #1a1a1a;
+    --accent: #e94560;
+    --text: #f0f0f0;
+    --owned: #2a4a3e;
+    --enemy: #4a2a2a;
+    --neutral: #2a2a2a;
+    --heat-low: #f0c040;
+    --heat-high: #e94560;
 }
 
 /* Basic layout using variables - no hardcoded colors */
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+* {
+    box-sizing: border-box;
+}
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family:
+        Inter,
+        Segoe UI,
+        Roboto,
+        Arial,
+        sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
 
-#sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;padding:20px;background:var(--surface);border-right:1px solid rgba(255,255,255,0.03)}
-main{margin-left:240px;padding:24px}
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 240px;
+    padding: 20px;
+    background: var(--surface);
+    border-right: 1px solid rgba(255, 255, 255, 0.03);
+}
+main {
+    margin-left: 240px;
+    padding: 24px;
+}
 
-#phase-banner{position:fixed;left:50%;transform:translateX(-50%);top:12px;padding:8px 12px;border-radius:8px;background:rgba(0,0,0,0.25);color:var(--accent);font-weight:700}
-#timer{position:fixed;right:18px;top:12px;padding:6px 10px;border-radius:8px;background:rgba(0,0,0,0.25);font-weight:600}
+#phase-banner {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 12px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--accent);
+    font-weight: 700;
+}
+#timer {
+    position: fixed;
+    right: 18px;
+    top: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.25);
+    font-weight: 600;
+}
 
-#board{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:64px}
-.district{background:var(--surface);padding:12px;border-radius:8px;min-height:100px;display:flex;flex-direction:column;justify-content:space-between;border:1px solid rgba(255,255,255,0.03);cursor:default}
-.district .name{font-weight:700}
-.district .owner{font-size:12px;opacity:0.8}
-.district .lab{margin-left:6px}
-.district .product{font-size:12px;opacity:0.9;margin-top:8px}
+#board {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    margin-top: 64px;
+}
+.district {
+    background: var(--surface);
+    padding: 12px;
+    border-radius: 8px;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    cursor: default;
+}
+.district .name {
+    font-weight: 700;
+}
+.district .owner {
+    font-size: 12px;
+    opacity: 0.8;
+}
+.district .lab {
+    margin-left: 6px;
+}
+.district .product {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-top: 8px;
+}
 
 /* action panel in sidebar */
-.action-panel{margin-top:12px;padding:10px;background:rgba(0,0,0,0.08);border-radius:6px}
-.action-panel h3{margin:0 0 8px 0}
-.action-panel button{background:var(--accent);color:var(--text);border:none;padding:8px 10px;border-radius:6px;cursor:pointer}
+.action-panel {
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+}
+.action-panel h3 {
+    margin: 0 0 8px 0;
+}
+.action-panel button {
+    background: var(--accent);
+    color: var(--text);
+    border: none;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
 
 /* spacing for multiple action buttons */
-.action-panel button + button{margin-left:8px}
+.action-panel button + button {
+    margin-left: 8px;
+}
 
 /* heat bar */
-.heat{height:8px;background:rgba(0,0,0,0.12);border-radius:6px;overflow:hidden;margin-top:8px}
-.heat .heat-fill{height:100%;width:0%;transition:width 300ms linear}
+.heat {
+    height: 8px;
+    background: rgba(0, 0, 0, 0.12);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+.heat .heat-fill {
+    height: 100%;
+    width: 0%;
+    transition: width 300ms linear;
+}
 
 /* raided appearance */
-.district.raided{filter:grayscale(60%);opacity:0.7}
-.district.raided .raid-label{display:block;font-weight:700;color:var(--neutral);margin-top:6px}
+.district.raided {
+    filter: grayscale(60%);
+    opacity: 0.7;
+}
+.district.raided .raid-label {
+    display: block;
+    font-weight: 700;
+    color: var(--neutral);
+    margin-top: 6px;
+}
 
-.district.owned{border-left:4px solid var(--owned);box-shadow:0 6px 18px rgba(42,74,62,0.06)}
-.district.neutral{border-left:4px solid var(--neutral);box-shadow:0 6px 18px rgba(34,34,34,0.04)}
-.district.enemy{border-left:4px solid var(--enemy);box-shadow:0 6px 18px rgba(74,42,42,0.06)}
+.district.owned {
+    border-left: 4px solid var(--owned);
+    box-shadow: 0 6px 18px rgba(42, 74, 62, 0.06);
+}
+.district.neutral {
+    border-left: 4px solid var(--neutral);
+    box-shadow: 0 6px 18px rgba(34, 34, 34, 0.04);
+}
+.district.enemy {
+    border-left: 4px solid var(--enemy);
+    box-shadow: 0 6px 18px rgba(74, 42, 42, 0.06);
+}
 
 /* highlight for valid attack targets */
-.district.highlight{outline:3px solid rgba(233,69,96,0.9);box-shadow:0 8px 20px rgba(233,69,96,0.06)}
+.district.highlight {
+    outline: 3px solid rgba(233, 69, 96, 0.9);
+    box-shadow: 0 8px 20px rgba(233, 69, 96, 0.06);
+}
 
-.thugs{font-size:12px;opacity:0.95;margin-top:8px}
+/* highlight for the currently selected attack target (before confirm) */
+.district.highlight-selected {
+    outline: 3px solid #f0c040;
+    box-shadow: 0 0 18px rgba(240, 192, 64, 0.35);
+    background: rgba(240, 192, 64, 0.07);
+}
 
-#sidebar h2{margin:0 0 10px 0;color:var(--accent)}
-#sidebar ul{list-style:none;padding:0;margin:0}
-#sidebar li{display:flex;justify-content:space-between;padding:8px;background:rgba(0,0,0,0.12);margin-bottom:8px;border-radius:6px}
+/* persistent highlight for a queued/confirmed attack target */
+.district.pending-attack {
+    outline: 3px solid #c084fc;
+    box-shadow: 0 0 18px rgba(192, 132, 252, 0.4);
+    animation: pendingAttackPulse 1.4s ease-in-out infinite;
+}
+@keyframes pendingAttackPulse {
+    0%,
+    100% {
+        box-shadow: 0 0 10px rgba(192, 132, 252, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 28px rgba(192, 132, 252, 0.7);
+    }
+}
+
+.thugs {
+    font-size: 12px;
+    opacity: 0.95;
+    margin-top: 8px;
+}
+
+#sidebar h2 {
+    margin: 0 0 10px 0;
+    color: var(--accent);
+}
+#sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+#sidebar li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px;
+    background: rgba(0, 0, 0, 0.12);
+    margin-bottom: 8px;
+    border-radius: 6px;
+}
 /* small helper class for sidebar tip text (moved from inline styles) */
-.sidebar-tip{font-size:12px;opacity:0.9;margin-top:12px;color:rgba(255,255,255,0.9)}
+.sidebar-tip {
+    font-size: 12px;
+    opacity: 0.9;
+    margin-top: 12px;
+    color: rgba(255, 255, 255, 0.9);
+}
+.product-breakdown {
+    margin-top: 8px;
+    font-size: 14px;
+}
 
-@media (max-width:700px){
-  #sidebar{position:relative;width:100%;height:auto;border-right:none;border-bottom:1px solid rgba(255,255,255,0.03)}
-  main{margin-left:0}
-  #phase-banner{top:86px}
-  #timer{top:86px}
+/* sold flash animation on district tiles */
+.sold-flash {
+    animation: soldFlash 0.6s ease-out;
+}
+@keyframes soldFlash {
+    0% {
+        outline: 3px solid var(--accent);
+    }
+    100% {
+        outline: 3px solid transparent;
+    }
+}
+
+/* dealing panel */
+.dealing-panel {
+    margin-top: 8px;
+}
+.deal-source {
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.deal-stash {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 4px;
+}
+.deal-section {
+    margin-top: 10px;
+}
+.deal-section-header {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 6px;
+    opacity: 0.85;
+}
+.deal-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 12px;
+}
+.deal-target-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.deal-target-price {
+    font-weight: 600;
+    color: var(--accent);
+    white-space: nowrap;
+}
+.deal-qty {
+    width: 46px;
+    padding: 3px 4px;
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+    text-align: center;
+}
+
+@media (max-width: 700px) {
+    #sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+    main {
+        margin-left: 0;
+    }
+    #phase-banner {
+        top: 86px;
+    }
+    #timer {
+        top: 86px;
+    }
 }

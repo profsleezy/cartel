@@ -1,24 +1,48 @@
 // client/main.js
-import { renderSidebar, renderPhaseBanner, renderTimer } from './ui.js';
-import { renderBoard } from './board.js';
-import { gameState, initGameState } from '../game/state.js';
-import { startPhaseTimer } from '../game/phases.js';
-import { initInput } from './input.js';
+import {
+  renderSidebar,
+  renderPhaseBanner,
+  renderTimer,
+  clearActionPanel,
+  showGameOver,
+} from "./ui.js";
+import { renderBoard, updateDistrict, highlightTargets } from "./board.js";
+import { gameState, initGameState } from "../game/state.js";
+import { startPhaseTimer } from "../game/phases.js";
+import { initInput } from "./input.js";
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // initialize game state (loads districts.json)
+// Re-render UI whenever game state changes.
+// phaseChanged = true  → full re-render (phase transition or initial load)
+// phaseChanged = false → timer tick; only the countdown needs updating
+window.addEventListener("gameStateChanged", (e) => {
+  renderTimer(gameState.timer);
+  if (e.detail.phaseChanged) {
+    renderPhaseBanner(gameState.phase);
+    renderSidebar();
+    clearActionPanel();
+    highlightTargets([]);
+    gameState.districts.forEach((d) => updateDistrict(d.id, d));
+  }
+});
+
+// Show game-over overlay when phases.js detects elimination.
+window.addEventListener("gameOver", (e) => {
+  showGameOver(e.detail.humanExists);
+});
+
+document.addEventListener("DOMContentLoaded", async () => {
+  // Load districts.json and build initial gameState
   await initGameState();
 
-  renderSidebar();
-  // render from gameState
+  // Initial render before the phase timer starts
   renderPhaseBanner(gameState.phase);
   renderTimer(gameState.timer);
-
+  renderSidebar();
   renderBoard(gameState.districts);
 
-  // start the phase timer which updates gameState and UI
+  // Start the phase timer (fires gameStateChanged on every tick / phase change)
   startPhaseTimer();
 
-  // wire input handlers
+  // Wire board click handlers
   initInput();
 });
