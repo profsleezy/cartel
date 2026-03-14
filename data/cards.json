@@ -1,0 +1,98 @@
+[
+  {
+    "id": "c1",
+    "name": "Dirty Money",
+    "type": "action",
+    "description": "Gain $300.",
+    "phase": "Buying",
+    "effect": { "type": "cash_bonus", "value": 300 }
+  },
+  {
+    "id": "c2",
+    "name": "Heat Shield",
+    "type": "action",
+    "description": "Remove 4 heat from each owned district.",
+    "phase": "Any",
+    "effect": { "type": "heat_decay", "value": 4 }
+  },
+  {
+    "id": "c3",
+    "name": "Free Agent",
+    "type": "action",
+    "description": "Gain a free pusher.",
+    "phase": "Buying",
+    "effect": { "type": "free_pusher", "value": 1 }
+  },
+  {
+    "id": "c4",
+    "name": "Price Spike",
+    "type": "action",
+    "description": "Dealing prices +40% this round.",
+    "phase": "Dealing",
+    "effect": { "type": "price_surge", "value": 1.4 }
+  },
+  {
+    "id": "c5",
+    "name": "Extra Muscle",
+    "type": "action",
+    "description": "Each owned district gains 2 thugs.",
+    "phase": "Attacking",
+    "effect": { "type": "thug_bonus", "value": 2 }
+  },
+  {
+    "id": "c6",
+    "name": "Hot Batch",
+    "type": "action",
+    "description": "Production doubled this Dealing phase.",
+    "phase": "Dealing",
+    "effect": { "type": "production_boost", "value": 2 }
+  },
+  {
+    "id": "c7",
+    "name": "Street Cash",
+    "type": "action",
+    "description": "Gain $150.",
+    "phase": "Any",
+    "effect": { "type": "cash_bonus", "value": 150 }
+  },
+  {
+    "id": "c8",
+    "name": "Recruiter",
+    "type": "action",
+    "description": "Each owned district gains 3 thugs.",
+    "phase": "Buying",
+    "effect": { "type": "thug_bonus", "value": 3 }
+  },
+  {
+    "id": "c9",
+    "name": "Lay Low",
+    "type": "action",
+    "description": "No raids can trigger this round.",
+    "phase": "Buying",
+    "effect": { "type": "raid_immunity" }
+  },
+  {
+    "id": "c10",
+    "name": "Bulk Supply",
+    "type": "action",
+    "description": "Double pusher selling capacity this round.",
+    "phase": "Dealing",
+    "effect": { "type": "pusher_double" }
+  },
+  {
+    "id": "c11",
+    "name": "Blitz",
+    "type": "action",
+    "description": "Attack a second time this round.",
+    "phase": "Attacking",
+    "effect": { "type": "extra_attack" }
+  },
+  {
+    "id": "c12",
+    "name": "Stash Guard",
+    "type": "action",
+    "description": "Stashes are protected from raids this round.",
+    "phase": "Any",
+    "effect": { "type": "stash_protect" }
+  }
+]

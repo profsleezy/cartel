@@ -1,0 +1,72 @@
+[
+  {
+    "id": "e1",
+    "name": "Police Crackdown",
+    "description": "Heat rises across all your districts.",
+    "weight": 6,
+    "effect": { "type": "heat_all", "value": 2 }
+  },
+  {
+    "id": "e2",
+    "name": "Bribe Pays Off",
+    "description": "The cops look the other way. Heat -3 across all your districts.",
+    "weight": 8,
+    "effect": { "type": "heat_decay", "value": 3 }
+  },
+  {
+    "id": "e3",
+    "name": "Street Windfall",
+    "description": "A deal falls in your lap. Gain $200.",
+    "weight": 10,
+    "effect": { "type": "cash_bonus", "value": 200 }
+  },
+  {
+    "id": "e4",
+    "name": "Protection Racket",
+    "description": "Pay up or face consequences. Lose $150.",
+    "weight": 7,
+    "effect": { "type": "cash_penalty", "value": 150 }
+  },
+  {
+    "id": "e5",
+    "name": "Recruits Arrive",
+    "description": "Fresh muscle shows up. Each owned district gains 1 thug.",
+    "weight": 9,
+    "effect": { "type": "thug_bonus", "value": 1 }
+  },
+  {
+    "id": "e6",
+    "name": "Fed Raid",
+    "description": "Feds descend on a random district you own.",
+    "weight": 2,
+    "effect": { "type": "raid_random" }
+  },
+  {
+    "id": "e7",
+    "name": "Market Surge",
+    "description": "Prices are hot this round. Dealing prices +25%.",
+    "weight": 5,
+    "effect": { "type": "price_surge", "value": 1.25 }
+  },
+  {
+    "id": "e8",
+    "name": "Market Slump",
+    "description": "Buyers dry up. Dealing prices -25% this round.",
+    "weight": 3,
+    "effect": { "type": "price_drop", "value": 0.75 }
+  },
+  {
+    "id": "e9",
+    "name": "Black Market Contact",
+    "description": "An anonymous tip scores you a free pusher.",
+    "weight": 6,
+    "effect": { "type": "free_pusher", "value": 1 }
+  },
+  {
+    "id": "e10",
+    "name": "Chemical Shipment",
+    "description": "Labs are running hot. Production doubled this Dealing phase.",
+    "weight": 5,
+    "effect": { "type": "production_boost", "value": 2 }
+  }
+]

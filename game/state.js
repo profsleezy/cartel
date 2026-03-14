@@ -12,10 +12,19 @@ export const gameState = {
       dealers: 3,
       pushers: 1,
       soldThisRound: 0,
+      hand: [],
     },
   ],
   // districts will be populated by initGameState() from data/districts.json
   districts: [],
+  // current round event tile (set by drawEventTile() each Buying phase)
+  currentEvent: null,
+  // long-term card effects active this round: [{ name, effectType, description }]
+  // reset at each Buying phase start alongside eventModifiers
+  activeCardEffects: [],
+  // round-scoped modifiers set by events and cards; reset at each Buying phase start
+  // { priceMultiplier, productionMultiplier, raidImmunity, stashProtect, pusherCapacityMultiplier, extraAttack }
+  eventModifiers: {},
 };
 
 // queued attacks between phases
@@ -77,6 +86,8 @@ export async function initGameState() {
       // attack flag per round
       if (typeof p.hasAttackedThisRound !== "boolean")
         p.hasAttackedThisRound = false;
+      // card hand
+      if (!Array.isArray(p.hand)) p.hand = [];
       // queued attacks array
       if (!gameState.queuedAttacks) gameState.queuedAttacks = [];
     });

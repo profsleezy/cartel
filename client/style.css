@@ -8,6 +8,15 @@
     --neutral: #2a2a2a;
     --heat-low: #f0c040;
     --heat-high: #e94560;
+    --event-bg: #1e1a2e;
+    --event-border: #7c5cbf;
+    --event-label: #c084fc;
+    --card-bg: #1a1e2a;
+    --card-border: #2e3a52;
+    --card-active-border: #60a5fa;
+    --card-active-bg: #1a2a3e;
+    --card-active-glow: rgba(96, 165, 250, 0.25);
+    --card-spent: rgba(255, 255, 255, 0.25);
 }
 
 /* Basic layout using variables - no hardcoded colors */
@@ -193,6 +202,118 @@ main {
     font-size: 12px;
     opacity: 0.95;
     margin-top: 8px;
+}
+
+/* ── Event tile ────────────────────────────────────────────────────────────── */
+.event-tile {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 54px;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    background: var(--event-bg);
+    border: 1px solid var(--event-border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: var(--text);
+    box-shadow: 0 4px 18px rgba(124, 92, 191, 0.25);
+    z-index: 1500;
+    max-width: 520px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 1;
+    transition: opacity 1.2s ease-out;
+}
+.event-tile__label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--event-label);
+    flex-shrink: 0;
+}
+.event-tile__name {
+    font-weight: 700;
+    color: var(--event-label);
+    flex-shrink: 0;
+}
+.event-tile__desc {
+    opacity: 0.75;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* Fade out state — added by renderEventTile() after 15 seconds */
+.event-tile--fading {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ── Card hand (sidebar) ───────────────────────────────────────────────────── */
+.hand {
+    margin-top: 16px;
+}
+.hand__heading {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    margin-bottom: 8px;
+}
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    cursor: default;
+    opacity: 0.55;
+    transition:
+        opacity 150ms ease,
+        box-shadow 150ms ease,
+        border-color 150ms ease;
+}
+/* Cards that can be played right now */
+.card.card--active {
+    background: var(--card-active-bg);
+    border-color: var(--card-active-border);
+    box-shadow: 0 0 10px var(--card-active-glow);
+    opacity: 1;
+    cursor: pointer;
+}
+.card.card--active:hover {
+    box-shadow: 0 0 18px var(--card-active-glow);
+    border-color: #93c5fd;
+}
+/* A card has already been played this round */
+.card.card--spent {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(60%);
+}
+.card__name {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+.card__phase {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--card-active-border);
+    opacity: 0.8;
+    margin-bottom: 4px;
+}
+.card__desc {
+    font-size: 11px;
+    opacity: 0.7;
+    line-height: 1.4;
 }
 
 #sidebar h2 {

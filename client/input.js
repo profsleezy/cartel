@@ -2,6 +2,7 @@
 // Handles user interactions and delegates DOM rendering to ui.js and board.js
 
 import { showActionPanel, renderSidebar, clearActionPanel } from "./ui.js";
+import { playCard } from "../game/cards.js";
 import {
   buyBuilding,
   dealProduct,
@@ -125,11 +126,19 @@ export function initInput() {
         const player = getPlayer("player1");
 
         if (player && player.hasAttackedThisRound) {
-          highlightTargets([]);
-          showActionPanel(id, {
-            buyButtons: [{ label: "Attack used this round", disabled: true }],
-          });
-          return;
+          // Blitz card grants a second attack — consume the flag and allow it
+          const extraAttack =
+            gameState.eventModifiers && gameState.eventModifiers.extraAttack;
+          if (extraAttack) {
+            gameState.eventModifiers.extraAttack = false;
+            player.hasAttackedThisRound = false;
+          } else {
+            highlightTargets([]);
+            showActionPanel(id, {
+              buyButtons: [{ label: "Attack used this round", disabled: true }],
+            });
+            return;
+          }
         }
         if ((d.thugs || 0) <= 0) {
           highlightTargets([]);
@@ -293,6 +302,29 @@ export function initInput() {
       }
     }
   });
+
+  // ── Card clicks (sidebar) ─────────────────────────────────────────────────
+  // Cards are rendered in the sidebar by ui.js with data-card-id attributes.
+  // We listen here so all interaction logic stays in input.js.
+  const sidebar = document.getElementById("sidebar");
+  if (sidebar) {
+    sidebar.addEventListener("click", (ev) => {
+      const cardEl = ev.target.closest("[data-card-id]");
+      if (!cardEl) return;
+      const cardId = cardEl.dataset.cardId;
+      if (!cardId) return;
+
+      const res = playCard(cardId);
+      if (res && res.success) {
+        // Re-render sidebar (hand state changes) and refresh all district tiles
+        // so any immediate effects (heat, thugs, etc.) appear on the board.
+        renderSidebar();
+        gameState.districts.forEach((d) => updateDistrict(d.id, d));
+      } else {
+        console.warn("[input] playCard failed:", res && res.message);
+      }
+    });
+  }
 
   /**
    * Queue an attack, mark the target district as pending-attack so the board

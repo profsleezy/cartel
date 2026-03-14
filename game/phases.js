@@ -7,6 +7,8 @@ import { gameState, checkElimination, getPlayer } from "./state.js";
 import { runProduction } from "./economy.js";
 import { decayHeat, runPassiveRaids, processRaidTimers } from "./heat.js";
 import { resolveAttack } from "./combat.js";
+import { drawEventTile, applyEventEffect } from "./events.js";
+import { drawCard } from "./cards.js";
 
 const PHASES = ["Buying", "Dealing", "Attacking"];
 let intervalId = null;
@@ -135,6 +137,15 @@ export function startPhaseTimer() {
         gameState.queuedAttacks = [];
       }
 
+      // Reset round-scoped modifiers and active card effect indicators
+      gameState.eventModifiers = {};
+      gameState.activeCardEffects = [];
+
+      // Draw one card and a new event tile at the start of each round (Buying = round start)
+      drawCard();
+      drawEventTile();
+      applyEventEffect();
+
       // Reset per-player round counters
       gameState.players.forEach((p) => {
         p.buildingsBoughtThisRound = { lab: 0, growhouse: 0, refinery: 0 };
@@ -155,19 +166,22 @@ export function startPhaseTimer() {
 
     // ── Dealing phase entry ───────────────────────────────────────────────────
     if (gameState.phase === "Dealing") {
-      // Generate fresh dealing prices for every district
+      const priceMultiplier =
+        (gameState.eventModifiers &&
+          gameState.eventModifiers.priceMultiplier) ||
+        1;
       gameState.districts.forEach((d) => {
         d.dealingPrices = {};
         ["coke", "weed", "heroin"].forEach((pt) => {
           const base = d.prices && d.prices[pt] ? d.prices[pt] : 100;
-          d.dealingPrices[pt] = base * (0.75 + Math.random() * 0.5);
+          d.dealingPrices[pt] =
+            base * (0.75 + Math.random() * 0.5) * priceMultiplier;
         });
       });
-      // Run production — stash updates are reflected in the next emit
       runProduction();
     }
 
-    // Single dispatch covers all re-rendering for this phase transition
+    // Initial render — treat as a phase change so the full UI is drawn
     emit(gameState.phase, true);
   }, 1000);
 }

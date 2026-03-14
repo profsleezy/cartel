@@ -22,8 +22,14 @@ export function produceProduct(districtId) {
     d.buildings.forEach((b) => {
       const ptype = mapping[b.type];
       if (!ptype) return;
-      // 1..3 units into the district's own stash
-      const amount = Math.floor(Math.random() * 3) + 1;
+      // 1..3 units into the district's own stash, scaled by any active production modifier
+      const multiplier =
+        (gameState.eventModifiers &&
+          gameState.eventModifiers.productionMultiplier) ||
+        1;
+      const amount = Math.ceil(
+        (Math.floor(Math.random() * 3) + 1) * multiplier,
+      );
       d.stash[ptype] = (d.stash[ptype] || 0) + amount;
       changed = true;
     });
@@ -201,8 +207,12 @@ export function dealProduct(
   if (tgt.raided)
     return { success: false, message: "Target district is raided" };
 
-  // pusher capacity check
-  const maxSells = (player.pushers || 0) * 2;
+  // pusher capacity check — pusher_double card/event can double the cap
+  const capacityMultiplier =
+    (gameState.eventModifiers &&
+      gameState.eventModifiers.pusherCapacityMultiplier) ||
+    1;
+  const maxSells = (player.pushers || 0) * 2 * capacityMultiplier;
   if (typeof player.soldThisRound !== "number") player.soldThisRound = 0;
   if (player.soldThisRound + quantity > maxSells)
     return {
@@ -229,9 +239,30 @@ export function dealProduct(
 
   // heat and raid on the target district
   addHeat(targetDistrictId, quantity);
-  const raidedNow = rollRaid(targetDistrictId);
+
+  // raid_immunity (from a card or event) suppresses all raid rolls this round
+  const immune =
+    gameState.eventModifiers && gameState.eventModifiers.raidImmunity;
+  // stash_protect lets the raid trigger on the district but preserves the stash
+  const protected_ =
+    gameState.eventModifiers && gameState.eventModifiers.stashProtect;
+
+  const raidedNow = !immune && rollRaid(targetDistrictId);
   if (raidedNow) {
-    triggerRaid(targetDistrictId);
+    if (protected_) {
+      // Raid fires but stash survives — only remove thugs and a building
+      const d = gameState.districts.find((x) => x.id === targetDistrictId);
+      if (d) {
+        d.raided = true;
+        d.raidTimer = 2 * 3;
+        d.thugs = 0;
+        if (Array.isArray(d.buildings) && d.buildings.length > 0)
+          d.buildings.pop();
+        // stash deliberately NOT wiped
+      }
+    } else {
+      triggerRaid(targetDistrictId);
+    }
     return {
       success: true,
       message: "Sold product",

@@ -3,7 +3,16 @@
 
 import { gameState, getPlayer } from "../game/state.js";
 
-let newsInterval = null;
+// Effect type → display metadata for the active effects indicator
+const EFFECT_META = {
+  price_surge: { icon: "📈", label: "Price Up" },
+  price_drop: { icon: "📉", label: "Price Down" },
+  production_boost: { icon: "⚗️", label: "2× Output" },
+  raid_immunity: { icon: "🛡️", label: "Raid Shield" },
+  stash_protect: { icon: "🔐", label: "Stash Guard" },
+  pusher_double: { icon: "×2", label: "×2 Capacity" },
+  extra_attack: { icon: "⚔️", label: "Blitz" },
+};
 
 export function renderSidebar() {
   const sidebar = document.getElementById("sidebar");
@@ -76,12 +85,167 @@ export function renderSidebar() {
 
   sidebar.appendChild(tip);
 
-  // news is rendered in a separate floating panel
-  renderNewsPanel();
+  // active long-term card effects for this round
+  renderActiveEffects(sidebar);
+
+  // player's card hand
+  renderHand(sidebar);
 }
 
-/** Render or update a floating news panel in the bottom-right of the screen. */
+// Track which event is currently displayed so we only restart the fade
+// timer when the event actually changes (renderEventTile is called every tick).
+// Key format: "<roundNumber>:<eventId>"
+let _shownEventKey = null;
+let _fadeTimerId = null;
+
+/**
+ * Create or update the fixed event-tile callout positioned below the phase banner.
+ * Each new event is shown at full opacity and fades out after 15 seconds.
+ * Hidden immediately when there is no current event.
+ */
+export function renderEventTile() {
+  let tile = document.getElementById("event-tile");
+  if (!tile) {
+    tile = document.createElement("div");
+    tile.id = "event-tile";
+    document.body.appendChild(tile);
+  }
+
+  const ev = gameState.currentEvent;
+
+  if (!ev) {
+    // No event this round — hide and cancel any pending fade
+    tile.style.display = "none";
+    if (_fadeTimerId) {
+      clearTimeout(_fadeTimerId);
+      _fadeTimerId = null;
+    }
+    _shownEventKey = null;
+    return;
+  }
+
+  // Build a unique key so re-renders during the same round don't reset the timer
+  const key = `${gameState.roundNumber}:${ev.id}`;
+  if (key === _shownEventKey) return; // same event already showing — leave it alone
+
+  // New event — cancel any previous fade timer, reset classes, show the tile
+  if (_fadeTimerId) {
+    clearTimeout(_fadeTimerId);
+    _fadeTimerId = null;
+  }
+  _shownEventKey = key;
+
+  tile.className = "event-tile";
+  tile.style.display = "flex";
+  tile.innerHTML = `
+    <span class="event-tile__label">Event</span>
+    <span class="event-tile__name">${uiEscape(ev.name)}</span>
+    <span class="event-tile__desc">${uiEscape(ev.description)}</span>
+  `;
+
+  // Start the 15-second countdown then fade out over 1.2 s
+  _fadeTimerId = setTimeout(() => {
+    tile.classList.add("event-tile--fading");
+    _fadeTimerId = null;
+  }, 15000);
+}
+
+/**
+ * Render the player's card hand inside the provided sidebar element.
+ * Cards matching the current phase get .card--active.
+ * After a card is played this round every card gets .card--spent.
+ */
+function renderHand(sidebar) {
+  const player = getPlayer("player1");
+  if (!player || !Array.isArray(player.hand) || player.hand.length === 0)
+    return;
+
+  const section = document.createElement("div");
+  section.className = "hand";
+
+  const heading = document.createElement("div");
+  heading.className = "hand__heading";
+  heading.textContent = "Hand";
+  section.appendChild(heading);
+
+  player.hand.forEach((card) => {
+    const el = document.createElement("div");
+    el.className = "card";
+    el.dataset.cardId = card.id;
+
+    const phaseMatch = card.phase === "Any" || card.phase === gameState.phase;
+
+    if (phaseMatch) {
+      el.classList.add("card--active");
+    }
+
+    el.innerHTML = `
+      <div class="card__name">${uiEscape(card.name)}</div>
+      <div class="card__phase">${uiEscape(card.phase)}</div>
+      <div class="card__desc">${uiEscape(card.description)}</div>
+    `;
+    section.appendChild(el);
+  });
+
+  sidebar.appendChild(section);
+}
+
+/**
+ * Render glowing pill indicators for long-term card effects that are
+ * still active this round. Shown between the stats and the hand.
+ */
+function renderActiveEffects(sidebar) {
+  const effects = Array.isArray(gameState.activeCardEffects)
+    ? gameState.activeCardEffects
+    : [];
+  if (effects.length === 0) return;
+
+  const section = document.createElement("div");
+  section.className = "active-effects";
+
+  const heading = document.createElement("div");
+  heading.className = "active-effects__heading";
+  heading.textContent = "Active";
+  section.appendChild(heading);
+
+  const list = document.createElement("div");
+  list.className = "active-effects__list";
+
+  effects.forEach((e) => {
+    const meta = EFFECT_META[e.effectType] || { icon: "✦", label: e.name };
+    const pill = document.createElement("div");
+    pill.className = "active-effect-pill";
+    pill.title = e.description;
+    pill.innerHTML = `
+      <span class="active-effect-pill__icon">${meta.icon}</span>
+      <span class="active-effect-pill__name">${uiEscape(e.name)}</span>
+    `;
+    list.appendChild(pill);
+  });
+
+  section.appendChild(list);
+  sidebar.appendChild(section);
+}
+
+/** Minimal HTML-escape for dynamic text inserted via innerHTML. */
+function uiEscape(s) {
+  return String(s).replace(
+    /[&<>"]/g,
+    (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch],
+  );
+}
+
+/**
+ * Incrementally update the floating news panel.
+ * Called every second from main.js's gameStateChanged handler.
+ *
+ * — New items are prepended (newest at top) identified by their ts timestamp.
+ * — Items older than 28 s get .news-item--fading which triggers a CSS fade.
+ * — Items older than 30 s are removed from the DOM and from gameState.news.
+ * — The panel hides itself when no items remain.
+ */
 export function renderNewsPanel() {
+  // ── Ensure panel shell exists ──────────────────────────────────────────────
   let panel = document.getElementById("news-panel");
   if (!panel) {
     panel = document.createElement("div");
@@ -98,58 +262,64 @@ export function renderNewsPanel() {
     panel.style.zIndex = 2000;
     panel.style.fontSize = "13px";
     panel.style.maxHeight = "50vh";
-    panel.style.overflow = "hidden";
+    panel.style.overflowY = "auto";
+
+    const header = document.createElement("div");
+    header.className = "news-header";
+    header.textContent = "News";
+    panel.appendChild(header);
+
+    const ul = document.createElement("ul");
+    ul.id = "news-list";
+    ul.style.listStyle = "none";
+    ul.style.margin = "0";
+    ul.style.padding = "0";
+    panel.appendChild(ul);
+
     document.body.appendChild(panel);
   }
 
-  if (
-    !gameState ||
-    !Array.isArray(gameState.news) ||
-    gameState.news.length === 0
-  ) {
-    panel.style.display = "none";
-    if (newsInterval) {
-      clearInterval(newsInterval);
-      newsInterval = null;
-    }
-    return;
-  }
+  const ul = document.getElementById("news-list");
+  if (!ul) return;
 
-  // prune items older than 30s
+  const news = Array.isArray(gameState.news) ? gameState.news : [];
   const now = Date.now();
-  gameState.news = gameState.news.filter((n) => {
-    const ts = n && n.ts ? n.ts : 0;
-    return now - ts < 30000;
-  });
 
-  if (gameState.news.length > 5) {
-    gameState.news = gameState.news.slice(-5);
-  }
-
-  panel.style.display = "block";
-  panel.innerHTML = `<div style="font-weight:600;margin-bottom:6px">News</div>`;
-  const ul = document.createElement("ul");
-  ul.style.listStyle = "none";
-  ul.style.margin = "0";
-  ul.style.padding = "0";
-  ul.style.maxHeight = "38vh";
-  ul.style.overflowY = "auto";
-  const recent = Array.from(gameState.news).slice(-5).reverse();
-  recent.forEach((item) => {
+  // ── Prepend any items not yet in the DOM ───────────────────────────────────
+  const existingKeys = new Set(
+    Array.from(ul.querySelectorAll("[data-ts]")).map((el) => el.dataset.ts),
+  );
+  // Iterate newest-first so prepend order keeps newest at top
+  [...news].reverse().forEach((item) => {
+    if (!item || !item.ts) return;
+    const key = String(item.ts);
+    if (existingKeys.has(key)) return;
     const li = document.createElement("li");
-    li.style.marginBottom = "8px";
-    li.style.paddingBottom = "6px";
-    li.style.borderBottom = "1px solid rgba(255,255,255,0.03)";
-    li.textContent = item && item.text ? item.text : String(item || "");
-    ul.appendChild(li);
+    li.className = "news-item";
+    li.dataset.ts = key;
+    li.textContent = item.text || String(item);
+    ul.prepend(li);
   });
-  panel.appendChild(ul);
 
-  if (!newsInterval) {
-    newsInterval = setInterval(() => {
-      renderNewsPanel();
-    }, 1000);
-  }
+  // ── Age existing DOM items: fade then remove ───────────────────────────────
+  Array.from(ul.querySelectorAll("[data-ts]")).forEach((el) => {
+    const age = now - parseInt(el.dataset.ts, 10);
+    if (age > 28000 && !el.classList.contains("news-item--fading")) {
+      el.classList.add("news-item--fading");
+    }
+    if (age > 30000) {
+      el.remove();
+      // Keep gameState.news in sync
+      if (Array.isArray(gameState.news)) {
+        gameState.news = gameState.news.filter(
+          (n) => n && String(n.ts) !== el.dataset.ts,
+        );
+      }
+    }
+  });
+
+  // ── Show / hide the panel ──────────────────────────────────────────────────
+  panel.style.display = ul.children.length > 0 ? "block" : "none";
 }
 
 /**
