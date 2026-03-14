@@ -15,6 +15,8 @@ export function produceProduct(districtId) {
   const d = gameState.districts.find((x) => x.id === districtId);
   if (!d) return false;
   if (d.owner !== "player1") return false;
+  // Raided districts cannot produce until recovered.
+  if (d.raided) return false;
   const mapping = { lab: "coke", growhouse: "weed", refinery: "heroin" };
   let changed = false;
   if (!d.stash) d.stash = { coke: 0, weed: 0, heroin: 0 };
@@ -237,8 +239,8 @@ export function dealProduct(
   player.soldThisRound += quantity;
   player.cash = Math.round((player.cash + totalAmount) / 5) * 5;
 
-  // heat and raid on the target district
-  addHeat(targetDistrictId, quantity);
+  // heat and raid on the target district (stack faster per sale)
+  addHeat(targetDistrictId, quantity + 1);
 
   // raid_immunity (from a card or event) suppresses all raid rolls this round
   const immune =

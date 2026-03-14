@@ -2,7 +2,7 @@
 // Handles user interactions and delegates DOM rendering to ui.js and board.js
 
 import { showActionPanel, renderSidebar, clearActionPanel } from "./ui.js";
-import { playCard } from "../game/cards.js";
+import { playCard, playCardOnDistrict, getCardById } from "../game/cards.js";
 import {
   buyBuilding,
   dealProduct,
@@ -37,7 +37,10 @@ function showDealPanel(sourceId) {
   const player = getPlayer("player1");
   if (!player) return;
 
-  const maxSells = (player.pushers || 0) * 2;
+  const capacityMultiplier =
+    (gameState.eventModifiers && gameState.eventModifiers.pusherCapacityMultiplier) ||
+    1;
+  const maxSells = (player.pushers || 0) * 2 * capacityMultiplier;
   const soldThisRound = player.soldThisRound || 0;
   const capacityExhausted = soldThisRound >= maxSells;
 
@@ -110,6 +113,26 @@ export function initInput() {
   let selectedCount = 1;
   let selectedTargetId = null;
 
+  // Card-targeting state for 'targeted' cards
+  let pendingCardId = null;
+
+  function clearCardTargeting() {
+    pendingCardId = null;
+    highlightTargets([]);
+    clearActionPanel();
+  }
+
+  function setCardTargeting(cardId, message) {
+    pendingCardId = cardId;
+    const owned = gameState.districts
+      .filter((x) => x.owner === "player1")
+      .map((x) => x.id);
+    highlightTargets(owned);
+    showActionPanel(owned[0] || null, {
+      buyButtons: [{ label: message, disabled: true }],
+    });
+  }
+
   board.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-id]");
     if (!el) return;
@@ -117,12 +140,25 @@ export function initInput() {
     const d = gameState.districts.find((x) => x.id === id);
     if (!d) return;
 
+    // If we're in pending card-target mode, apply card to clicked owned district
+    if (pendingCardId && d.owner === "player1") {
+      const res = playCardOnDistrict(pendingCardId, id);
+      if (res && res.success) {
+        pendingCardId = null;
+        highlightTargets([]);
+        updateDistrict(id, d);
+        renderSidebar();
+        showActionPanel(id, { buyButtons: [{ label: "Applied card", disabled: true }] });
+      } else {
+        clearCardTargeting();
+      }
+      return;
+    }
+
     // ── ATTACKING phase ──────────────────────────────────────────────────────
     if (gameState.phase === "Attacking") {
       // ── Click on an owned district → select it as the attack source ────────
       if (d.owner === "player1") {
-        selectedSourceId = id;
-        selectedTargetId = null;
         const player = getPlayer("player1");
 
         if (player && player.hasAttackedThisRound) {
@@ -133,6 +169,8 @@ export function initInput() {
             gameState.eventModifiers.extraAttack = false;
             player.hasAttackedThisRound = false;
           } else {
+            selectedSourceId = null;
+            selectedTargetId = null;
             highlightTargets([]);
             showActionPanel(id, {
               buyButtons: [{ label: "Attack used this round", disabled: true }],
@@ -140,7 +178,12 @@ export function initInput() {
             return;
           }
         }
+
+        selectedSourceId = id;
+        selectedTargetId = null;
+
         if ((d.thugs || 0) <= 0) {
+          selectedSourceId = null;
           highlightTargets([]);
           showActionPanel(id, {
             buyButtons: [{ label: "No thugs available", disabled: true }],
@@ -313,6 +356,28 @@ export function initInput() {
       if (!cardEl) return;
       const cardId = cardEl.dataset.cardId;
       if (!cardId) return;
+
+      const card = getCardById(cardId);
+      if (card && card.targeted) {
+        const res = playCard(cardId);
+        // playCard for targeted cards returns requiresTarget with card since we need a district first
+        if (res && res.requiresTarget) {
+          pendingCardId = cardId;
+          const ownedTargets = gameState.districts
+            .filter((x) => x.owner === "player1")
+            .map((x) => x.id);
+          highlightTargets(ownedTargets);
+          showActionPanel(ownedTargets[0] || null, {
+            buyButtons: [
+              {
+                label: `Select owned district to apply ${card.name}`,
+                disabled: true,
+              },
+            ],
+          });
+        }
+        return;
+      }
 
       const res = playCard(cardId);
       if (res && res.success) {

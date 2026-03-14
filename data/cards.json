@@ -11,8 +11,9 @@
     "id": "c2",
     "name": "Heat Shield",
     "type": "action",
-    "description": "Remove 4 heat from each owned district.",
+    "description": "Select one owned district to remove 4 heat.",
     "phase": "Any",
+    "targeted": true,
     "effect": { "type": "heat_decay", "value": 4 }
   },
   {
@@ -35,16 +36,17 @@
     "id": "c5",
     "name": "Extra Muscle",
     "type": "action",
-    "description": "Each owned district gains 2 thugs.",
+    "description": "Select one owned district to gain 2 thugs.",
     "phase": "Attacking",
+    "targeted": true,
     "effect": { "type": "thug_bonus", "value": 2 }
   },
   {
     "id": "c6",
     "name": "Hot Batch",
     "type": "action",
-    "description": "Production doubled this Dealing phase.",
-    "phase": "Dealing",
+    "description": "Production doubled this round (apply during Buying to affect next Dealing).",
+    "phase": "Buying",
     "effect": { "type": "production_boost", "value": 2 }
   },
   {
@@ -59,9 +61,10 @@
     "id": "c8",
     "name": "Recruiter",
     "type": "action",
-    "description": "Each owned district gains 3 thugs.",
+    "description": "Select one owned district to gain 4 thugs.",
     "phase": "Buying",
-    "effect": { "type": "thug_bonus", "value": 3 }
+    "targeted": true,
+    "effect": { "type": "thug_bonus", "value": 4 }
   },
   {
     "id": "c9",
@@ -78,14 +81,6 @@
     "description": "Double pusher selling capacity this round.",
     "phase": "Dealing",
     "effect": { "type": "pusher_double" }
-  },
-  {
-    "id": "c11",
-    "name": "Blitz",
-    "type": "action",
-    "description": "Attack a second time this round.",
-    "phase": "Attacking",
-    "effect": { "type": "extra_attack" }
   },
   {
     "id": "c12",

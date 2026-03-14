@@ -198,15 +198,26 @@ function renderActiveEffects(sidebar) {
   const effects = Array.isArray(gameState.activeCardEffects)
     ? gameState.activeCardEffects
     : [];
-  if (effects.length === 0) return;
+  const raided = (gameState.districts || []).filter(
+    (d) => d.owner === "player1" && d.raided,
+  );
+  if (effects.length === 0 && raided.length === 0) return;
 
   const section = document.createElement("div");
   section.className = "active-effects";
 
   const heading = document.createElement("div");
   heading.className = "active-effects__heading";
-  heading.textContent = "Active";
+  heading.textContent = "Active Effects";
   section.appendChild(heading);
+
+  const hint = document.createElement("div");
+  hint.className = "active-effects__hint";
+  hint.textContent = "Modifiers and raid timers shown for this round.";
+  hint.style.fontSize = "11px";
+  hint.style.opacity = "0.7";
+  hint.style.marginBottom = "6px";
+  section.appendChild(hint);
 
   const list = document.createElement("div");
   list.className = "active-effects__list";
@@ -219,6 +230,19 @@ function renderActiveEffects(sidebar) {
     pill.innerHTML = `
       <span class="active-effect-pill__icon">${meta.icon}</span>
       <span class="active-effect-pill__name">${uiEscape(e.name)}</span>
+      <span style="font-size:10px;opacity:0.7;margin-left:6px;">Active</span>
+    `;
+    list.appendChild(pill);
+  });
+
+  raided.forEach((d) => {
+    const pill = document.createElement("div");
+    pill.className = "active-effect-pill";
+    pill.title = `${d.name} is raided until ${d.raidTimer || 0} phase ticks`;
+    pill.innerHTML = `
+      <span class="active-effect-pill__icon">⚠️</span>
+      <span class="active-effect-pill__name">${uiEscape(d.name)} raided</span>
+      <span style="font-size:10px;opacity:0.7;margin-left:6px;">${d.raidTimer || 0} ticks left</span>
     `;
     list.appendChild(pill);
   });

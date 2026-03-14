@@ -80,6 +80,11 @@ export function drawCard() {
  *
  * Returns { success: boolean, message?: string, card? }
  */
+export function getCardById(cardId) {
+  if (!cardsData || !Array.isArray(cardsData)) return null;
+  return cardsData.find((c) => c.id === cardId) || null;
+}
+
 export function playCard(cardId) {
   const player = getPlayer("player1");
   if (!player) return { success: false, message: "No player found" };
@@ -96,6 +101,16 @@ export function playCard(cardId) {
     return {
       success: false,
       message: `"${card.name}" can only be played during the ${card.phase} phase`,
+    };
+  }
+
+  // Targeted cards are not resolved immediately here; input will call playCardOnDistrict.
+  if (card.targeted) {
+    return {
+      success: false,
+      message: `"${card.name}" requires selecting a district. Click a district to apply.`,
+      requiresTarget: true,
+      card,
     };
   }
 
@@ -125,4 +140,55 @@ export function playCard(cardId) {
   });
 
   return { success: true, card };
+}
+
+export function playCardOnDistrict(cardId, districtId) {
+  const player = getPlayer("player1");
+  if (!player) return { success: false, message: "No player found" };
+  if (!Array.isArray(player.hand))
+    return { success: false, message: "Hand not initialised" };
+
+  const idx = player.hand.findIndex((c) => c.id === cardId);
+  if (idx === -1) return { success: false, message: "Card not found in hand" };
+
+  const card = player.hand[idx];
+  if (!card.targeted)
+    return { success: false, message: `Card ${card.name} does not target a district` };
+
+  const d = gameState.districts.find((x) => x.id === districtId);
+  if (!d) return { success: false, message: "District not found" };
+  if (d.owner !== "player1")
+    return { success: false, message: "District must be owned to apply this card" };
+
+  if (card.id === "c5") {
+    d.thugs = (d.thugs || 0) + 2;
+    // Add a small news message for clarity
+    if (!gameState.news) gameState.news = [];
+    gameState.news.push({
+      text: `${card.name}: ${d.name} gained 2 thugs.`,
+      ts: Date.now(),
+    });
+  } else if (card.id === "c2") {
+    if (typeof d.heat !== "number") d.heat = 0;
+    d.heat = Math.max(0, d.heat - 4);
+    if (!gameState.news) gameState.news = [];
+    gameState.news.push({
+      text: `${card.name}: ${d.name} lost 4 heat.`,
+      ts: Date.now(),
+    });
+  } else if (card.id === "c8") {
+    d.thugs = (d.thugs || 0) + 4;
+    if (!gameState.news) gameState.news = [];
+    gameState.news.push({
+      text: `${card.name}: ${d.name} gained 4 thugs.`,
+      ts: Date.now(),
+    });
+  } else {
+    // Fallback: apply the card effect if defined
+    applyEffect(card.effect);
+  }
+
+  // Remove card from hand
+  player.hand.splice(idx, 1);
+  return { success: true, card, district: d };
 }

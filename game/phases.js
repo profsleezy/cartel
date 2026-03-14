@@ -66,12 +66,14 @@ export function startPhaseTimer() {
       gameState.roundNumber = (gameState.roundNumber || 0) + 1;
     }
 
-    // Process raid timers and decay heat (pure state mutations; listener redraws)
+    // Process raid timers only (decay happens each Buying phase start)
     processRaidTimers();
-    decayHeat();
 
-    // ── Buying phase entry ────────────────────────────────────────────────────
+    // ── Buying phase entry ───────────────────────────────────────────────────
     if (gameState.phase === "Buying") {
+      // Decay heat once per Buying stage (slower overall heat drop)
+      decayHeat();
+
       // Passive raids at start of Buying
       const passiveRaided = runPassiveRaids();
       if (Array.isArray(passiveRaided) && passiveRaided.length) {

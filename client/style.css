@@ -253,6 +253,62 @@ main {
     pointer-events: none;
 }
 
+.news-item {
+    opacity: 1;
+    transition: opacity 1.5s ease;
+    margin-bottom: 5px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.08);
+    color: var(--text);
+    font-size: 12px;
+}
+
+.news-item--fading {
+    opacity: 0;
+}
+
+.active-effect-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    font-size: 12px;
+    transition: background 150ms ease;
+}
+
+.active-effect-pill:hover {
+    background: rgba(255,255,255,0.12);
+}
+
+.active-effect-pill__icon {
+    min-width: 18px;
+    text-align: center;
+    font-size: 13px;
+}
+
+.active-effect-pill__name {
+    flex: 1;
+}
+
+.card-target-highlight {
+    outline: 3px solid rgba(255, 0, 0, 0.8);
+    box-shadow: 0 0 14px rgba(255, 0, 0, 0.3);
+}
+
+.card-target-applied {
+    animation: cardTargetFlash 0.8s ease;
+}
+@keyframes cardTargetFlash {
+    from { background-color: rgba(255, 255, 0, 0.35); }
+    to { background-color: transparent; }
+}
+
 /* ── Card hand (sidebar) ───────────────────────────────────────────────────── */
 .hand {
     margin-top: 16px;
@@ -319,6 +375,29 @@ main {
 #sidebar h2 {
     margin: 0 0 10px 0;
     color: var(--accent);
+}
+.active-effects {
+    margin-top: 10px;
+    padding: 8px;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+}
+.active-effects__heading {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #f0f0f0;
+}
+.active-effects__hint {
+    font-size: 11px;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 6px;
+}
+.active-effects__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 #sidebar ul {
     list-style: none;
