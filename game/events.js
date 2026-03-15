@@ -66,6 +66,7 @@ export function applyEventEffect() {
     text: `Event: ${ev.name} — ${ev.description}`,
     ts: Date.now(),
   });
+  if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
 }
 
 /**
@@ -139,6 +140,7 @@ export function applyEffect(effect) {
         text: `Fed Raid: ${tgt.name} has been raided!`,
         ts: Date.now(),
       });
+      if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
       break;
     }
 

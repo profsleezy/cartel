@@ -152,6 +152,78 @@ export function initInput() {
     });
   }
 
+  function openBuyingPanel(districtId) {
+    const d = gameState.districts.find((x) => x.id === districtId);
+    if (!d || d.owner !== "player1") return;
+    const player = getPlayer("player1");
+    if (!player) return;
+
+    const types = ["lab", "growhouse", "refinery"];
+    const buyButtons = types.map((type) => {
+      const idx = Math.min((player.buildingsBoughtThisRound && player.buildingsBoughtThisRound[type]) || 0, 2);
+      const cost = Math.round([100, 180, 300][idx] / 5) * 5;
+      const disabled = d.buildings && d.buildings.length >= 5;
+      const reachedLimit = player.buildingsBoughtThisRound && (player.buildingsBoughtThisRound[type] || 0) >= 3;
+      return {
+        label: `Buy ${type.charAt(0).toUpperCase() + type.slice(1)} (costs $${cost})`,
+        disabled: disabled || reachedLimit,
+        onClick: () => {
+          const res = buyBuilding(districtId, type);
+          if (res && res.success) {
+            updateDistrict(districtId, res.district);
+            renderSidebar();
+            openBuyingPanel(districtId);
+          }
+        },
+      };
+    });
+
+    buyButtons.push({
+      label: "Buy Pusher (cost $150)",
+      disabled: false,
+      onClick: () => {
+        const res = buyPusher();
+        if (res && res.success) {
+          renderSidebar();
+          openBuyingPanel(districtId);
+        }
+      },
+    });
+
+    const thugIdx = Math.min(player.thugsHiredThisRound || 0, 2);
+    const thugCost = Math.round([100, 180, 300][thugIdx] / 5) * 5;
+    buyButtons.push({
+      label: `Hire Thug (cost $${thugCost})`,
+      disabled: false,
+      onClick: () => {
+        const res = hireThugs(districtId, 1);
+        if (res && res.success) {
+          updateDistrict(districtId, res.district);
+          renderSidebar();
+          openBuyingPanel(districtId);
+        }
+      },
+    });
+
+    const buildingList = (d.buildings || []).map((b, idx) => {
+      const emoji = b.type === "lab" ? "🧪" : b.type === "growhouse" ? "🌿" : "⚗️";
+      return {
+        label: `${emoji} ${b.type.charAt(0).toUpperCase() + b.type.slice(1)}`,
+        onDelete: () => {
+          const res = deleteBuilding(districtId, idx);
+          if (res && res.success) {
+            updateDistrict(districtId, res.district);
+            renderSidebar();
+            openBuyingPanel(districtId);
+          }
+        },
+      };
+    });
+
+    setPanelSelection(districtId);
+    openDistrictPanel(districtId, d, { buyButtons, buildingList });
+  }
+
   board.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-id]");
     if (!el) return;
@@ -283,83 +355,7 @@ export function initInput() {
 
     // ── BUYING phase ─────────────────────────────────────────────────────────
     if (gameState.phase === "Buying" && d.owner === "player1") {
-      const player = getPlayer("player1");
-      const types = ["lab", "growhouse", "refinery"];
-      const buyButtons = types.map((type) => {
-        const idx = Math.min(
-          (player.buildingsBoughtThisRound &&
-            player.buildingsBoughtThisRound[type]) ||
-            0,
-          2,
-        );
-        const cost = Math.round([100, 180, 300][idx] / 5) * 5;
-        const disabled = d.buildings && d.buildings.length >= 5;
-        const reachedLimit =
-          player.buildingsBoughtThisRound &&
-          (player.buildingsBoughtThisRound[type] || 0) >= 3;
-        return {
-          label: `Buy ${type.charAt(0).toUpperCase() + type.slice(1)} (costs $${cost})`,
-          disabled: disabled || reachedLimit,
-          onClick: () => {
-            const res = buyBuilding(id, type);
-            if (res && res.success) {
-              updateDistrict(id, res.district);
-              renderSidebar();
-            } else {
-              console.warn("buyBuilding failed", res && res.message);
-            }
-          },
-        };
-      });
-
-      buyButtons.push({
-        label: "Buy Pusher (cost $150)",
-        disabled: false,
-        onClick: () => {
-          const res = buyPusher();
-          if (res && res.success) {
-            renderSidebar();
-          } else {
-            console.warn("buyPusher failed", res && res.message);
-          }
-        },
-      });
-
-      const buildingList = (d.buildings || []).map((b, idx) => {
-        const emoji =
-          b.type === "lab" ? "🧪" : b.type === "growhouse" ? "🌿" : "⚗️";
-        return {
-          label: `${emoji} ${b.type.charAt(0).toUpperCase() + b.type.slice(1)}`,
-          onDelete: () => {
-            const res = deleteBuilding(id, idx);
-            if (res && res.success) {
-              updateDistrict(id, res.district);
-              renderSidebar();
-            } else {
-              console.warn("deleteBuilding failed", res && res.message);
-            }
-          },
-        };
-      });
-
-      const thugIdx = Math.min(player.thugsHiredThisRound || 0, 2);
-      const thugCost = Math.round([100, 180, 300][thugIdx] / 5) * 5;
-      buyButtons.push({
-        label: `Hire Thug (cost $${thugCost})`,
-        disabled: false,
-        onClick: () => {
-          const res = hireThugs(id, 1);
-          if (res && res.success) {
-            updateDistrict(id, res.district);
-            renderSidebar();
-          } else {
-            console.warn("hireThugs failed", res && res.message);
-          }
-        },
-      });
-
-      setPanelSelection(id);
-      openDistrictPanel(id, d, { buyButtons, buildingList });
+      openBuyingPanel(id);
       return;
     }
 

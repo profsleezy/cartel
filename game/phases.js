@@ -117,6 +117,7 @@ export function startPhaseTimer() {
             text: `Passive RAID: ${d.id} (${d.name}) was raided.`,
             ts: Date.now(),
           });
+              if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
         });
       }
 
@@ -137,7 +138,7 @@ export function startPhaseTimer() {
           src.thugs = Math.max(0, (src.thugs || 0) - committed);
           const res = resolveAttack(src, committed, tgt);
 
-          if (res.attackerWon) {
+            if (res.attackerWon) {
             tgt.thugs = Math.max(
               0,
               (tgt.thugs || 0) - (res.defenderLosses || 0),
@@ -153,6 +154,7 @@ export function startPhaseTimer() {
               text: `You captured ${tgt.id} (${tgt.name}). You lost ${res.attackerLosses || 0} thugs.`,
               ts: Date.now(),
             });
+            if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
           } else {
             tgt.thugs = Math.max(
               0,
@@ -164,6 +166,7 @@ export function startPhaseTimer() {
               text: `You were repelled at ${tgt.id} (${tgt.name}). Defender lost ${res.defenderLosses || 0} thugs.`,
               ts: Date.now(),
             });
+            if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
           }
         });
 

@@ -11,7 +11,7 @@ import {
   openDistrictPanel,
 } from "./ui.js";
 import { renderBoard, updateDistrict, highlightTargets } from "./board.js";
-import { gameState, initGameState } from "../game/state.js";
+import { gameState, initGameState, getPlayer } from "../game/state.js";
 import { startPhaseTimer } from "../game/phases.js";
 import { initEvents } from "../game/events.js";
 import { initCards, dealStartingHand } from "../game/cards.js";
@@ -30,11 +30,22 @@ window.addEventListener("gameStateChanged", (e) => {
     highlightTargets([]);
     gameState.districts.forEach((d) => updateDistrict(d.id, d));
     // If the side panel was open, refresh its contents for the new phase
-    try {
+      try {
       const openId = getSelectedDistrictId();
       if (openId) {
         const d = gameState.districts.find((x) => x.id === openId);
-        if (d) openDistrictPanel(openId, d, {});
+        if (d) {
+          if (gameState.phase === 'Attacking' && d.owner === 'player1') {
+            const player = getPlayer('player1');
+            if (player && player.hasAttackedThisRound) {
+              openDistrictPanel(openId, d, { statusMessage: 'Attack already used this round' });
+            } else {
+              openDistrictPanel(openId, d, {});
+            }
+          } else {
+            openDistrictPanel(openId, d, {});
+          }
+        }
       }
     } catch (err) {
       // ignore; defensive

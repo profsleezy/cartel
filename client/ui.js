@@ -118,9 +118,19 @@ export function openDistrictPanel(
         } else if (dealingControls && dealingControls.sections && dealingControls.sections.length) {
           html += `<div class="panel-actions-title">Dealing phase</div>`;
           dealingControls.sections.forEach((section) => {
-            html += `<div style="font-size:8px;color:rgba(255,255,255,0.35);margin:8px 0 4px;">${section.emoji} ${section.productType} — ${section.stashAmt} available</div>`;
-            (section.targets || []).forEach((t) => {
-              html += `<div class="panel-row" style="align-items:center;"><span class="panel-row-label">${uiEscape(t.name)}</span><span class="panel-row-value">$${t.price}</span><input type="number" min="1" max="${t.maxQty}" value="1" class="deal-qty-in" data-deal-target-id="${t.id}" data-deal-type="${section.productType}" style="width:40px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:inherit;padding:4px;font-size:9px;"><button type="button" class="panel-action-btn accent" style="padding:4px 8px;margin:0;" data-deal-sell data-target-id="${t.id}" data-type="${section.productType}" ${t.disabled ? "disabled" : ""}>Sell</button></div>`;
+            html += `<div class="deal-section-header">${section.emoji} ${section.productType.charAt(0).toUpperCase() + section.productType.slice(1)} — ${section.stashAmt} available</div>`;
+            section.targets.forEach((t) => {
+              html += `
+          <div class="deal-target-row">
+            <div class="deal-target-info">
+              <span class="deal-target-name">${uiEscape(t.name)}</span>
+              <span class="deal-target-price ${t.price === Math.max(...section.targets.map(x => x.price)) ? 'highest' : ''}">$${t.price.toLocaleString()}</span>
+            </div>
+            <div class="deal-target-controls">
+              <input type="number" min="1" max="${t.maxQty}" value="1" class="deal-qty-in" data-deal-target-id="${t.id}" data-deal-type="${section.productType}">
+              <button type="button" class="panel-action-btn accent deal-sell-btn" data-deal-sell data-target-id="${t.id}" data-type="${section.productType}" ${t.disabled ? 'disabled' : ''}>Sell</button>
+            </div>
+          </div>`;
             });
           });
         } else if (Array.isArray(buyButtons) && buyButtons.length) {
@@ -202,7 +212,7 @@ export function openDistrictPanel(
   const dispatchEl = document.getElementById("panel-dispatch");
   if (dispatchEl) {
     const news = Array.isArray(gameState.news) ? gameState.news : [];
-    const entries = news.slice(-12).reverse();
+    const entries = news.slice(-8).reverse();
     dispatchEl.innerHTML = `
       <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Dispatch</div>
       ${entries.length
@@ -241,8 +251,9 @@ export function openDistrictPanel(
   // (Attacking phase handles non-owned via attackControls passed from input.js)
   const actionsEl2 = document.getElementById("panel-actions");
   if (actionsEl2) {
-    const hasContent = isOwned || !!attackControls;
-    actionsEl2.style.display = hasContent ? "block" : "none";
+    const actionsHtml = actionsEl2.innerHTML.trim();
+    const hasVisibleContent = actionsHtml.length > 0;
+    actionsEl2.style.display = hasVisibleContent ? 'block' : 'none';
   }
 }
 
