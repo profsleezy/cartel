@@ -27,11 +27,23 @@ const PRODUCT_META = [
   { type: "heroin", emoji: "⚗️" },
 ];
 
+function setPanelSelection(districtId) {
+  const board = document.getElementById("board");
+  if (!board) return;
+  board.querySelectorAll(".district").forEach((tile) => {
+    tile.classList.remove("selected");
+    if (tile.dataset.id === districtId) {
+      tile.classList.add("selected", "select-pulse");
+      setTimeout(() => tile.classList.remove("select-pulse"), 400);
+    }
+  });
+}
+
 /**
  * Build and display the dealing panel for a source district.
  * Called on first click and re-called after each successful sale to refresh state.
  */
-function showDealPanel(sourceId) {
+export function showDealPanel(sourceId) {
   const src = gameState.districts.find((x) => x.id === sourceId);
   if (!src) return;
 
@@ -73,17 +85,18 @@ function showDealPanel(sourceId) {
             maxQty: stashAmt,
             disabled: capacityExhausted,
             onSell: (qty) => {
-              const res = dealProduct(sourceId, d.id, p.type, qty);
-              if (res && res.success) {
-                flashDistrict(d.id);
-                // Update the target tile's risk bar immediately — heat was just added
-                updateDistrict(d.id, res.targetDistrict);
-                renderSidebar();
-                // Re-render updated panel after the sale
-                showDealPanel(sourceId);
-              } else {
-                console.warn("dealProduct failed", res && res.message);
-              }
+                const res = dealProduct(sourceId, d.id, p.type, qty);
+                if (res && res.success) {
+                  flashDistrict(d.id);
+                  // Update both source and target tiles immediately
+                  if (res.targetDistrict) updateDistrict(d.id, res.targetDistrict);
+                  if (res.sourceDistrict) updateDistrict(sourceId, res.sourceDistrict);
+                  renderSidebar();
+                  // Re-render updated panel after the sale so stash and counters refresh
+                  showDealPanel(sourceId);
+                } else {
+                  console.warn("dealProduct failed", res && res.message);
+                }
             },
           };
         })
@@ -109,6 +122,129 @@ function showDealPanel(sourceId) {
       sections,
     },
   });
+
+  // Track current open dealing source and stash snapshot so we can refresh
+  _currentDealSource = sourceId;
+  _lastDealSnapshot = JSON.stringify({ stash: src.stash || {}, raided: !!src.raided });
+}
+
+let _currentDealSource = null;
+let _lastDealSnapshot = null;
+let _dealListenerAttached = false;
+
+function _onGameStateChangedForDeal() {
+  try {
+    if (!_currentDealSource) return;
+    const openId = getSelectedDistrictId();
+    if (openId !== _currentDealSource) {
+      // user navigated away — stop listening
+      _currentDealSource = null;
+      _lastDealSnapshot = null;
+      return;
+    }
+    const d = gameState.districts.find((x) => x.id === _currentDealSource);
+    if (!d) return;
+    const snap = JSON.stringify({ stash: d.stash || {}, raided: !!d.raided });
+    if (snap !== _lastDealSnapshot) {
+      _lastDealSnapshot = snap;
+      const totalStash = (d.stash && ((d.stash.coke || 0) + (d.stash.weed || 0) + (d.stash.heroin || 0))) || 0;
+      if (d.raided) {
+        // If raided, reopen generic panel with a status message so user sees raid
+        openDistrictPanel(d.id, d, { statusMessage: 'This district was just raided' });
+        _currentDealSource = null;
+        _lastDealSnapshot = null;
+        return;
+      }
+      if (totalStash <= 0) {
+        // stash emptied — close dealing UI to prevent spamming
+        openDistrictPanel(d.id, d, {});
+        _currentDealSource = null;
+        _lastDealSnapshot = null;
+        return;
+      }
+      // otherwise rebuild the dealing panel so counts/prices update
+      showDealPanel(_currentDealSource);
+    }
+  } catch (err) {
+    // defensive
+  }
+}
+
+// attach global listener once
+if (typeof window !== 'undefined' && !_dealListenerAttached) {
+  window.addEventListener('gameStateChanged', _onGameStateChangedForDeal);
+  _dealListenerAttached = true;
+}
+export function openBuyingPanel(districtId) {
+  const d = gameState.districts.find((x) => x.id === districtId);
+  if (!d || d.owner !== "player1") return;
+  const player = getPlayer("player1");
+  if (!player) return;
+
+  const types = ["lab", "growhouse", "refinery"];
+  const buyButtons = types.map((type) => {
+    const idx = Math.min((player.buildingsBoughtThisRound && player.buildingsBoughtThisRound[type]) || 0, 2);
+    const cost = Math.round([100, 180, 300][idx] / 5) * 5;
+    const disabled = d.buildings && d.buildings.length >= 5;
+    const reachedLimit = player.buildingsBoughtThisRound && (player.buildingsBoughtThisRound[type] || 0) >= 3;
+    return {
+      label: `Buy ${type.charAt(0).toUpperCase() + type.slice(1)} (costs $${cost})`,
+      disabled: disabled || reachedLimit,
+      onClick: () => {
+        const res = buyBuilding(districtId, type);
+        if (res && res.success) {
+          updateDistrict(districtId, res.district);
+          renderSidebar();
+          openBuyingPanel(districtId);
+        }
+      },
+    };
+  });
+
+  buyButtons.push({
+    label: "Buy Pusher (cost $150)",
+    disabled: false,
+    onClick: () => {
+      const res = buyPusher();
+      if (res && res.success) {
+        renderSidebar();
+        openBuyingPanel(districtId);
+      }
+    },
+  });
+
+  const thugIdx = Math.min(player.thugsHiredThisRound || 0, 2);
+  const thugCost = Math.round([100, 180, 300][thugIdx] / 5) * 5;
+  buyButtons.push({
+    label: `Hire Thug (cost $${thugCost})`,
+    disabled: false,
+    onClick: () => {
+      const res = hireThugs(districtId, 1);
+      if (res && res.success) {
+        updateDistrict(districtId, res.district);
+        renderSidebar();
+        openBuyingPanel(districtId);
+      }
+    },
+  });
+
+  const buildingList = (d.buildings || []).map((b, idx) => {
+    const emoji = b.type === "lab" ? "🧪" : b.type === "growhouse" ? "🌿" : "⚗️";
+    return {
+      label: `${emoji} ${b.type.charAt(0).toUpperCase() + b.type.slice(1)}`,
+      onDelete: () => {
+        const res = deleteBuilding(districtId, idx);
+        if (res && res.success) {
+          updateDistrict(districtId, res.district);
+          renderSidebar();
+          openBuyingPanel(districtId);
+        }
+      },
+    };
+  });
+
+  setPanelSelection(districtId);
+  openDistrictPanel(districtId, d, { buyButtons, buildingList });
 }
 
 export function initInput() {
@@ -140,89 +276,7 @@ export function initInput() {
     });
   }
 
-  function setPanelSelection(districtId) {
-    const board = document.getElementById("board");
-    if (!board) return;
-    board.querySelectorAll(".district").forEach((tile) => {
-      tile.classList.remove("selected");
-      if (tile.dataset.id === districtId) {
-        tile.classList.add("selected", "select-pulse");
-        setTimeout(() => tile.classList.remove("select-pulse"), 400);
-      }
-    });
-  }
-
-  function openBuyingPanel(districtId) {
-    const d = gameState.districts.find((x) => x.id === districtId);
-    if (!d || d.owner !== "player1") return;
-    const player = getPlayer("player1");
-    if (!player) return;
-
-    const types = ["lab", "growhouse", "refinery"];
-    const buyButtons = types.map((type) => {
-      const idx = Math.min((player.buildingsBoughtThisRound && player.buildingsBoughtThisRound[type]) || 0, 2);
-      const cost = Math.round([100, 180, 300][idx] / 5) * 5;
-      const disabled = d.buildings && d.buildings.length >= 5;
-      const reachedLimit = player.buildingsBoughtThisRound && (player.buildingsBoughtThisRound[type] || 0) >= 3;
-      return {
-        label: `Buy ${type.charAt(0).toUpperCase() + type.slice(1)} (costs $${cost})`,
-        disabled: disabled || reachedLimit,
-        onClick: () => {
-          const res = buyBuilding(districtId, type);
-          if (res && res.success) {
-            updateDistrict(districtId, res.district);
-            renderSidebar();
-            openBuyingPanel(districtId);
-          }
-        },
-      };
-    });
-
-    buyButtons.push({
-      label: "Buy Pusher (cost $150)",
-      disabled: false,
-      onClick: () => {
-        const res = buyPusher();
-        if (res && res.success) {
-          renderSidebar();
-          openBuyingPanel(districtId);
-        }
-      },
-    });
-
-    const thugIdx = Math.min(player.thugsHiredThisRound || 0, 2);
-    const thugCost = Math.round([100, 180, 300][thugIdx] / 5) * 5;
-    buyButtons.push({
-      label: `Hire Thug (cost $${thugCost})`,
-      disabled: false,
-      onClick: () => {
-        const res = hireThugs(districtId, 1);
-        if (res && res.success) {
-          updateDistrict(districtId, res.district);
-          renderSidebar();
-          openBuyingPanel(districtId);
-        }
-      },
-    });
-
-    const buildingList = (d.buildings || []).map((b, idx) => {
-      const emoji = b.type === "lab" ? "🧪" : b.type === "growhouse" ? "🌿" : "⚗️";
-      return {
-        label: `${emoji} ${b.type.charAt(0).toUpperCase() + b.type.slice(1)}`,
-        onDelete: () => {
-          const res = deleteBuilding(districtId, idx);
-          if (res && res.success) {
-            updateDistrict(districtId, res.district);
-            renderSidebar();
-            openBuyingPanel(districtId);
-          }
-        },
-      };
-    });
-
-    setPanelSelection(districtId);
-    openDistrictPanel(districtId, d, { buyButtons, buildingList });
-  }
+  
 
   board.addEventListener("click", (ev) => {
     const el = ev.target.closest("[data-id]");
@@ -442,5 +496,15 @@ export function initInput() {
     highlightTargets([]);
     clearActionPanel();
     renderSidebar();
+    // If the side panel is still open for the source district, refresh it to remove attack UI
+    try {
+      const openId = getSelectedDistrictId();
+      if (openId === fromId) {
+        const d = gameState.districts.find((x) => x.id === fromId);
+        if (d) openDistrictPanel(fromId, d, { statusMessage: 'Attack already used this round' });
+      }
+    } catch (err) {
+      // defensive
+    }
   }
 }

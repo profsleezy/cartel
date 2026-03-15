@@ -15,7 +15,7 @@ import { gameState, initGameState, getPlayer } from "../game/state.js";
 import { startPhaseTimer } from "../game/phases.js";
 import { initEvents } from "../game/events.js";
 import { initCards, dealStartingHand } from "../game/cards.js";
-import { initInput } from "./input.js";
+import { initInput, openBuyingPanel, showDealPanel } from "./input.js";
 
 // Re-render UI whenever game state changes.
 // phaseChanged = true  → full re-render (phase transition or initial load)
@@ -35,7 +35,14 @@ window.addEventListener("gameStateChanged", (e) => {
       if (openId) {
         const d = gameState.districts.find((x) => x.id === openId);
         if (d) {
-          if (gameState.phase === 'Attacking' && d.owner === 'player1') {
+          if (gameState.phase === 'Buying' && d.owner === 'player1') {
+            openBuyingPanel(openId);
+          } else if (gameState.phase === 'Dealing' && d.owner === 'player1') {
+            const stash = d.stash || {};
+            const totalStash = (stash.coke || 0) + (stash.weed || 0) + (stash.heroin || 0);
+            if (totalStash > 0) showDealPanel(openId);
+            else openDistrictPanel(openId, d, {});
+          } else if (gameState.phase === 'Attacking' && d.owner === 'player1') {
             const player = getPlayer('player1');
             if (player && player.hasAttackedThisRound) {
               openDistrictPanel(openId, d, { statusMessage: 'Attack already used this round' });

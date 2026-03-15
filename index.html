@@ -33,10 +33,14 @@
       </div>
     </header>
 
-    <div id="intel-strip" class="intel-strip hidden" role="status">
+    <div id="intel-strip" class="intel-overlay hidden" role="status">
       <span class="intel-dot"></span>
-      <span class="intel-label">INTEL</span>
-      <span class="intel-text" id="intel-text">No current event.</span>
+      <div class="intel-body">
+        <span class="intel-label">INTEL</span>
+        <span class="intel-text" id="intel-text">No current event.</span>
+        <div class="intel-progress-wrap" id="intel-progress-wrap"><div id="intel-progress" class="intel-progress"></div></div>
+        <div class="intel-controls"><button id="intel-dismiss" class="intel-dismiss">Dismiss</button></div>
+      </div>
     </div>
 
     <div class="main-content">
@@ -85,6 +89,10 @@
     </aside>
     </div>
 
+    <div id="dispatch-float" class="dispatch-float" aria-live="polite">
+      <div class="dispatch-header">Dispatch</div>
+      <div id="dispatch-list"></div>
+    </div>
     <footer id="bottom-bar"></footer>
     <div id="action-panel-host" aria-live="polite"></div>
   </div>

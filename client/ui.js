@@ -67,6 +67,16 @@ export function openDistrictPanel(
     `;
   }
 
+  // Guard: if attackControls were requested but player already used attack this round
+  if (attackControls && gameState.phase === 'Attacking' && owner === 'player1') {
+    const player = getPlayer('player1');
+    const extraAttack = gameState.eventModifiers && gameState.eventModifiers.extraAttack;
+    if (player && player.hasAttackedThisRound && !extraAttack) {
+      attackControls = null;
+      statusMessage = statusMessage || 'Attack already used this round';
+    }
+  }
+
   const stash = (district && district.stash) || { coke: 0, weed: 0, heroin: 0 };
   const stashEl = document.getElementById("panel-stash");
   if (stashEl) {
@@ -117,14 +127,25 @@ export function openDistrictPanel(
           html += `<button type="button" class="panel-action-btn accent" data-attack-confirm ${attackControls.confirmDisabled ? "disabled" : ""}>Confirm attack</button>`;
         } else if (dealingControls && dealingControls.sections && dealingControls.sections.length) {
           html += `<div class="panel-actions-title">Dealing phase</div>`;
-          dealingControls.sections.forEach((section) => {
+          // tabs for product types
+          html += `<div class="deal-tabs">`;
+          dealingControls.sections.forEach((section, idx) => {
+            const label = `${section.emoji} ${section.productType.charAt(0).toUpperCase() + section.productType.slice(1)}`;
+            html += `<button type="button" class="deal-tab ${idx === 0 ? 'active' : ''}" data-deal-tab="${section.productType}">${uiEscape(label)}</button>`;
+          });
+          html += `</div>`;
+          html += `<div class="deal-tab-contents">`;
+          dealingControls.sections.forEach((section, idx) => {
+            html += `<div class="deal-tab-content" data-deal-content="${section.productType}" style="${idx === 0 ? 'display:block;' : 'display:none;'}">`;
             html += `<div class="deal-section-header">${section.emoji} ${section.productType.charAt(0).toUpperCase() + section.productType.slice(1)} — ${section.stashAmt} available</div>`;
-            section.targets.forEach((t) => {
+            // show all targets; panel is scrollable so no need to hide extras
+            (section.targets || []).forEach((t) => {
+              const highest = t.price === Math.max(...(section.targets || []).map((x) => x.price));
               html += `
           <div class="deal-target-row">
             <div class="deal-target-info">
               <span class="deal-target-name">${uiEscape(t.name)}</span>
-              <span class="deal-target-price ${t.price === Math.max(...section.targets.map(x => x.price)) ? 'highest' : ''}">$${t.price.toLocaleString()}</span>
+              <span class="deal-target-price ${highest ? 'highest' : ''}">$${t.price.toLocaleString()}</span>
             </div>
             <div class="deal-target-controls">
               <input type="number" min="1" max="${t.maxQty}" value="1" class="deal-qty-in" data-deal-target-id="${t.id}" data-deal-type="${section.productType}">
@@ -132,7 +153,10 @@ export function openDistrictPanel(
             </div>
           </div>`;
             });
+            // no 'more hidden' indicator — show full list and rely on panel scroll
+            html += `</div>`;
           });
+          html += `</div>`;
         } else if (Array.isArray(buyButtons) && buyButtons.length) {
           html += `<div class="panel-actions-title">Buying phase</div>`;
           html += `<div class="panel-actions-grid">`;
@@ -151,6 +175,21 @@ export function openDistrictPanel(
         actionsEl.innerHTML = html;
 
         if (dealingControls && dealingControls.sections) {
+          // tab switching
+          const tabBtns = actionsEl.querySelectorAll('.deal-tab');
+          if (tabBtns && tabBtns.length) {
+            tabBtns.forEach((btn) => {
+              btn.addEventListener('click', () => {
+                tabBtns.forEach((b) => b.classList.remove('active'));
+                btn.classList.add('active');
+                const type = btn.dataset.dealTab;
+                actionsEl.querySelectorAll('.deal-tab-content').forEach((c) => {
+                  c.style.display = c.dataset.dealContent === type ? 'block' : 'none';
+                });
+              });
+            });
+          }
+
           actionsEl.querySelectorAll("[data-deal-sell]").forEach((btn) => {
             const targetId = btn.dataset.targetId;
             const type = btn.dataset.type;
@@ -209,26 +248,27 @@ export function openDistrictPanel(
       });
     }
 
-  const dispatchEl = document.getElementById("panel-dispatch");
-  if (dispatchEl) {
+  // Render dispatch into floating panel `#dispatch-float` (fallback to inline panel if missing)
+  const dispatchContainer = document.getElementById("dispatch-float") || document.getElementById("panel-dispatch");
+  if (dispatchContainer) {
     const news = Array.isArray(gameState.news) ? gameState.news : [];
     const entries = news.slice(-8).reverse();
-    dispatchEl.innerHTML = `
-      <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Dispatch</div>
-      ${entries.length
-        ? entries
-            .map((n) => {
-              const text = (n && n.text) || String(n);
-              const ts = n && n.ts ? new Date(n.ts).toLocaleTimeString() : "";
-              let type = "neutral";
-              if (/raid|raided/i.test(text)) type = "raid";
-              else if (/win|captured|gain/i.test(text)) type = "win";
-              else if (/loss|repelled|lost/i.test(text)) type = "loss";
-              return `<div class="panel-dispatch-entry"><div class="panel-dispatch-text ${type}">${uiEscape(text)}</div><div class="panel-dispatch-ts">${ts}</div></div>`;
-            })
-            .join("")
-        : '<div style="font-size:9px;color:rgba(255,255,255,0.3);">No activity</div>'}
-    `;
+    const listEl = dispatchContainer.querySelector('#dispatch-list') || dispatchContainer;
+    if (entries.length) {
+      listEl.innerHTML = entries
+        .map((n) => {
+          const text = (n && n.text) || String(n);
+          const ts = n && n.ts ? new Date(n.ts).toLocaleTimeString() : "";
+          let type = "neutral";
+          if (/raid|raided/i.test(text)) type = "raid";
+          else if (/win|captured|gain/i.test(text)) type = "win";
+          else if (/loss|repelled|lost/i.test(text)) type = "loss";
+          return `<div class="panel-dispatch-entry"><div class="panel-dispatch-text ${type}">${uiEscape(text)}</div><div class="panel-dispatch-ts">${ts}</div></div>`;
+        })
+        .join("");
+    } else {
+      listEl.innerHTML = '<div style="font-size:9px;color:rgba(255,255,255,0.3);">No activity</div>';
+    }
   }
 
   // Visibility rules based on phase and ownership
@@ -291,10 +331,8 @@ const EFFECT_META = {
 
 /** Renders the player hand into #hand-area (created by renderBottomBar). */
 export function renderSidebar() {
-  const handArea = document.getElementById("hand-area");
-  if (!handArea) return;
-  handArea.innerHTML = "";
-  renderHand(handArea);
+  // Re-render the entire bottom bar (hand + player strips) so cash/pushers update
+  renderBottomBar();
 }
 
 // Track which event is currently displayed so we only restart the fade
@@ -320,14 +358,18 @@ export function renderEventTile() {
     }
     _shownEventKey = null;
     intel.classList.add("hidden");
-    intel.style.display = "";
-    intel.style.opacity = "";
-    intel.style.transition = "";
+    const p = document.getElementById('intel-progress');
+    if (p) { p.style.transition = 'none'; p.style.width = '100%'; }
     return;
   }
 
   const eventKey = `${gameState.roundNumber || 0}:${ev.id || ev.name || ""}`;
   const isNew = eventKey !== _shownEventKey;
+
+  // If user dismissed or timeout-hidden this exact event, don't re-show it until it changes
+  if (typeof window !== 'undefined' && window.__intelDismissedKey && window.__intelDismissedKey === eventKey) {
+    return;
+  }
 
   if (isNew) {
     if (_fadeTimerId) {
@@ -335,27 +377,52 @@ export function renderEventTile() {
       _fadeTimerId = null;
     }
     _shownEventKey = eventKey;
-    intel.classList.remove("intel-fade-out", "hidden");
-    intel.style.display = "flex";
-    intel.style.opacity = "0";
-    intel.style.transition = "opacity 0.4s ease";
+    intel.classList.remove("hidden");
+    intel.style.opacity = '';
+    // allow multi-line messages; truncate in CSS if needed
     intelText.textContent = `${ev.name}: ${ev.description}`;
-    requestAnimationFrame(() => {
-      intel.style.opacity = "1";
-    });
+
+    // reset and animate progress
+    const progressEl = document.getElementById('intel-progress');
+    if (progressEl) {
+      progressEl.style.transition = 'none';
+      progressEl.style.width = '100%';
+      // force reflow then animate
+      // eslint-disable-next-line no-unused-expressions
+      progressEl.offsetWidth;
+      requestAnimationFrame(() => {
+        progressEl.style.transition = 'width 15s linear';
+        progressEl.style.width = '0%';
+      });
+    }
+
+    // attach dismiss handler once
+    const dismissBtn = document.getElementById('intel-dismiss');
+    if (dismissBtn && !dismissBtn._intelAttached) {
+      dismissBtn._intelAttached = true;
+      dismissBtn.addEventListener('click', () => {
+        if (_fadeTimerId) { clearTimeout(_fadeTimerId); _fadeTimerId = null; }
+        intel.classList.add('hidden');
+        if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.width = '100%'; }
+        // remember this key was dismissed so it won't reappear while unchanged
+        if (typeof window !== 'undefined') window.__intelDismissedKey = eventKey;
+      });
+    }
+
     _fadeTimerId = setTimeout(() => {
       _fadeTimerId = null;
-      intel.style.transition = "opacity 1.2s ease";
-      intel.classList.add("intel-fade-out");
+      intel.style.transition = 'opacity 1.2s ease';
+      intel.style.opacity = '0';
       setTimeout(() => {
-        intel.style.display = "none";
-        intel.classList.remove("intel-fade-out");
-        intel.style.opacity = "";
-        intel.style.transition = "";
-        _shownEventKey = null;
+        intel.classList.add('hidden');
+        intel.style.opacity = '';
+        intel.style.transition = '';
+        if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.width = '100%'; }
+        if (typeof window !== 'undefined') window.__intelDismissedKey = eventKey;
       }, 1200);
     }, 15000);
   } else {
+    // update message only
     intelText.textContent = `${ev.name}: ${ev.description}`;
   }
 }

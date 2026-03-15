@@ -138,6 +138,7 @@ export function playCard(cardId) {
     text: `Played: ${card.name} — ${card.description}`,
     ts: Date.now(),
   });
+  if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
 
   return { success: true, card };
 }
@@ -168,6 +169,7 @@ export function playCardOnDistrict(cardId, districtId) {
       text: `${card.name}: ${d.name} gained 2 thugs.`,
       ts: Date.now(),
     });
+    if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
   } else if (card.id === "c2") {
     if (typeof d.heat !== "number") d.heat = 0;
     d.heat = Math.max(0, d.heat - 4);
@@ -176,6 +178,7 @@ export function playCardOnDistrict(cardId, districtId) {
       text: `${card.name}: ${d.name} lost 4 heat.`,
       ts: Date.now(),
     });
+    if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
   } else if (card.id === "c8") {
     d.thugs = (d.thugs || 0) + 4;
     if (!gameState.news) gameState.news = [];
@@ -183,6 +186,7 @@ export function playCardOnDistrict(cardId, districtId) {
       text: `${card.name}: ${d.name} gained 4 thugs.`,
       ts: Date.now(),
     });
+    if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
   } else {
     // Fallback: apply the card effect if defined
     applyEffect(card.effect);
