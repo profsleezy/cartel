@@ -78,7 +78,10 @@ export function openDistrictPanel(
     `;
   }
 
-  const prices = (district && district.prices) || { coke: 0, weed: 0, heroin: 0 };
+  const useDealingPrices = gameState.phase === "Dealing" && district && district.dealingPrices;
+  const prices = useDealingPrices
+    ? district.dealingPrices
+    : (district && district.prices) || { coke: 0, weed: 0, heroin: 0 };
   const priceArr = [
     { k: "coke", label: "Coke", v: prices.coke || 0 },
     { k: "weed", label: "Weed", v: prices.weed || 0 },
@@ -88,7 +91,7 @@ export function openDistrictPanel(
   const pricesEl = document.getElementById("panel-prices");
   if (pricesEl) {
     pricesEl.innerHTML = `
-      <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Dealing prices here</div>
+      <div class="panel-section-title">${gameState.phase === "Dealing" ? "Live prices this round" : "Base prices"}</div>
       ${priceArr
         .map(
           (p) =>
@@ -201,6 +204,30 @@ export function openDistrictPanel(
             .join("")
         : '<div style="font-size:9px;color:rgba(255,255,255,0.3);">No activity</div>'}
     `;
+  }
+
+  // Visibility rules based on phase and ownership
+  const phase = gameState.phase;
+  const isOwned = owner === "player1";
+
+  // panel-stash: show during Buying and Dealing only, hide during Attacking
+  const stashEl2 = document.getElementById("panel-stash");
+  if (stashEl2) stashEl2.style.display = (phase === "Attacking") ? "none" : "block";
+
+  // panel-prices: show during Dealing only
+  const pricesEl2 = document.getElementById("panel-prices");
+  if (pricesEl2) pricesEl2.style.display = (phase === "Dealing") ? "block" : "none";
+
+  // panel-buildings: show during Buying only, and only for owned districts
+  const buildingsEl2 = document.getElementById("panel-buildings");
+  if (buildingsEl2) buildingsEl2.style.display = (phase === "Buying" && isOwned) ? "block" : "none";
+
+  // panel-actions: hide entirely for non-owned districts outside of Attacking
+  // (Attacking phase handles non-owned via attackControls passed from input.js)
+  const actionsEl2 = document.getElementById("panel-actions");
+  if (actionsEl2) {
+    const showActions = isOwned || attackControls;
+    actionsEl2.style.display = showActions ? "block" : "none";
   }
 }
 
@@ -412,14 +439,17 @@ export function renderTimer(seconds) {
 function renderGameUi() {
   renderTopBar(gameState.phase, gameState.timer, gameState.roundNumber);
   renderBottomBar();
-  renderEventTile();
 }
 
 // expose helper so other code can update the bar if needed
 let _phaseFlashInitialized = false;
 
-export function renderGameStatus() {
-  renderGameUi();
+export function renderGameStatus(phaseChanged = false) {
+  renderTopBar(gameState.phase, gameState.timer, gameState.roundNumber);
+  if (phaseChanged) {
+    renderBottomBar();
+  }
+  // renderEventTile is called separately by main.js, do not call it here
 }
 
 /** Call when phase has just changed (e.detail.phaseChanged) to play the phase pill flash. Skips on first load. */

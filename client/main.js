@@ -19,7 +19,7 @@ import { initInput } from "./input.js";
 // phaseChanged = true  → full re-render (phase transition or initial load)
 // phaseChanged = false → timer tick; only the countdown needs updating
 window.addEventListener("gameStateChanged", (e) => {
-  renderGameStatus();
+  renderGameStatus(e.detail.phaseChanged);
   renderEventTile();
   if (e.detail.phaseChanged) {
     triggerPhaseChangeFlash();
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   dealStartingHand(2);
 
   // Initial render before the phase timer starts
-  renderGameStatus();
+  renderGameStatus(true);
   renderSidebar();
   renderBoard(gameState.districts);
 
