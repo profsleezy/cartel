@@ -7,6 +7,8 @@ import {
   showGameOver,
   initPanelCloseHandlers,
   triggerPhaseChangeFlash,
+  getSelectedDistrictId,
+  openDistrictPanel,
 } from "./ui.js";
 import { renderBoard, updateDistrict, highlightTargets } from "./board.js";
 import { gameState, initGameState } from "../game/state.js";
@@ -27,6 +29,16 @@ window.addEventListener("gameStateChanged", (e) => {
     clearActionPanel();
     highlightTargets([]);
     gameState.districts.forEach((d) => updateDistrict(d.id, d));
+    // If the side panel was open, refresh its contents for the new phase
+    try {
+      const openId = getSelectedDistrictId();
+      if (openId) {
+        const d = gameState.districts.find((x) => x.id === openId);
+        if (d) openDistrictPanel(openId, d, {});
+      }
+    } catch (err) {
+      // ignore; defensive
+    }
   }
 });
 

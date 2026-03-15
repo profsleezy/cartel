@@ -30,7 +30,7 @@ export function closeDistrictPanel() {
 export function openDistrictPanel(
   id,
   district,
-  { buyButtons = [], buildingList = [], attackControls, dealingControls } = {},
+  { buyButtons = [], buildingList = [], attackControls, dealingControls, statusMessage } = {},
 ) {
   selectedDistrictId = id;
   const panel = document.getElementById("side-panel");
@@ -100,73 +100,88 @@ export function openDistrictPanel(
         .join("")}
     `;
   }
+      const actionsEl = document.getElementById("panel-actions");
+      if (actionsEl) {
+        let html = "";
 
-  const actionsEl = document.getElementById("panel-actions");
-  if (actionsEl) {
-    let html = `<div class="panel-actions-title">${gameState.phase || "Buying"} phase</div>`;
-    if (attackControls) {
-      html += `<div style="margin-bottom:8px;"><div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:4px;">Count: ${attackControls.selectedCount || 1}</div><input type="range" min="1" max="${attackControls.max || 1}" value="${attackControls.selectedCount || 1}" style="width:100%;" data-attack-count></div>`;
-      html += `<div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:6px;">Target: ${attackControls.targetId || "None"}</div>`;
-      html += `<button type="button" class="panel-action-btn accent" data-attack-confirm ${attackControls.confirmDisabled ? "disabled" : ""}>Confirm attack</button>`;
-    } else if (dealingControls && dealingControls.sections && dealingControls.sections.length) {
-      dealingControls.sections.forEach((section) => {
-        html += `<div style="font-size:8px;color:rgba(255,255,255,0.35);margin:8px 0 4px;">${section.emoji} ${section.productType} — ${section.stashAmt} available</div>`;
-        (section.targets || []).forEach((t) => {
-          html += `<div class="panel-row" style="align-items:center;"><span class="panel-row-label">${uiEscape(t.name)}</span><span class="panel-row-value">$${t.price}</span><input type="number" min="1" max="${t.maxQty}" value="1" class="deal-qty-in" data-deal-target-id="${t.id}" data-deal-type="${section.productType}" style="width:40px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:inherit;padding:4px;font-size:9px;"><button type="button" class="panel-action-btn accent" style="padding:4px 8px;margin:0;" data-deal-sell data-target-id="${t.id}" data-type="${section.productType}" ${t.disabled ? "disabled" : ""}>Sell</button></div>`;
-        });
-      });
-    } else if (Array.isArray(buyButtons) && buyButtons.length) {
-      buyButtons.forEach((b, i) => {
-        const isAccent = !b.disabled;
-        const label = b.label.replace(/\s*\(costs?\s*\$[\d,]+\)\s*$/i, "").trim();
-        const costMatch = b.label.match(/\$[\d,]+/);
-        const cost = costMatch ? costMatch[0] : "";
-        html += `<button type="button" class="panel-action-btn ${isAccent ? "accent" : ""}" ${b.disabled ? "disabled" : ""} data-action-index="${i}"><span class="panel-action-label">${uiEscape(label)}</span><span class="panel-action-cost">${cost}</span></button>`;
-      });
-    } else {
-      html += `<div style="font-size:9px;color:rgba(255,255,255,0.3);">No actions</div>`;
-    }
-    actionsEl.innerHTML = html;
-    if (dealingControls && dealingControls.sections) {
-      actionsEl.querySelectorAll("[data-deal-sell]").forEach((btn) => {
-        const targetId = btn.dataset.targetId;
-        const type = btn.dataset.type;
-        const section = (dealingControls.sections || []).find((s) => s.productType === type);
-        const target = section && (section.targets || []).find((t) => t.id === targetId);
-        if (target && typeof target.onSell === "function") {
-          btn.addEventListener("click", () => {
-            const qtyInput = actionsEl.querySelector(`.deal-qty-in[data-deal-target-id="${targetId}"][data-deal-type="${type}"]`);
-            const qty = Math.max(1, Math.min(parseInt(qtyInput && qtyInput.value, 10) || 1, target.maxQty));
-            target.onSell(qty);
+        // status message (single-line muted text)
+        if (statusMessage) {
+          html += `<div class="panel-actions-title">${gameState.phase || "Buying"} phase</div>`;
+          html += `<div style="font-size:9px;color:rgba(255,255,255,0.3);padding:6px 0;font-style:italic;">${uiEscape(statusMessage)}</div>`;
+        } else if (attackControls) {
+          html += `<div class="panel-actions-title">Attacking phase</div>`;
+          html += `<div style="margin-bottom:8px;">`;
+          html += `<div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:4px;">Count: ${attackControls.selectedCount || 1}</div><input type="range" min="1" max="${attackControls.max || 1}" value="${attackControls.selectedCount || 1}" style="width:100%;" data-attack-count>`;
+          html += `</div>`;
+          html += `<div style="font-size:9px;color:rgba(255,255,255,0.35);margin-bottom:6px;">Target: ${attackControls.targetId || "None"}</div>`;
+          html += `<button type="button" class="panel-action-btn accent" data-attack-confirm ${attackControls.confirmDisabled ? "disabled" : ""}>Confirm attack</button>`;
+        } else if (dealingControls && dealingControls.sections && dealingControls.sections.length) {
+          html += `<div class="panel-actions-title">Dealing phase</div>`;
+          dealingControls.sections.forEach((section) => {
+            html += `<div style="font-size:8px;color:rgba(255,255,255,0.35);margin:8px 0 4px;">${section.emoji} ${section.productType} — ${section.stashAmt} available</div>`;
+            (section.targets || []).forEach((t) => {
+              html += `<div class="panel-row" style="align-items:center;"><span class="panel-row-label">${uiEscape(t.name)}</span><span class="panel-row-value">$${t.price}</span><input type="number" min="1" max="${t.maxQty}" value="1" class="deal-qty-in" data-deal-target-id="${t.id}" data-deal-type="${section.productType}" style="width:40px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);color:inherit;padding:4px;font-size:9px;"><button type="button" class="panel-action-btn accent" style="padding:4px 8px;margin:0;" data-deal-sell data-target-id="${t.id}" data-type="${section.productType}" ${t.disabled ? "disabled" : ""}>Sell</button></div>`;
+            });
+          });
+        } else if (Array.isArray(buyButtons) && buyButtons.length) {
+          html += `<div class="panel-actions-title">Buying phase</div>`;
+          html += `<div class="panel-actions-grid">`;
+          buyButtons.forEach((b, i) => {
+            const label = b.label.replace(/\s*\(costs?\s*\$[\d,]+\)\s*$/i, "").trim();
+            const costMatch = b.label.match(/\$[\d,]+/);
+            const cost = costMatch ? costMatch[0] : "";
+            html += `<button type="button" class="panel-action-btn" ${b.disabled ? "disabled" : ""} data-action-index="${i}"><span class="panel-action-label">${uiEscape(label)}</span><span class="panel-action-cost">${cost}</span></button>`;
+          });
+          html += `</div>`;
+        } else {
+          // no content — leave empty; visibility rules will hide the section
+          html = "";
+        }
+
+        actionsEl.innerHTML = html;
+
+        if (dealingControls && dealingControls.sections) {
+          actionsEl.querySelectorAll("[data-deal-sell]").forEach((btn) => {
+            const targetId = btn.dataset.targetId;
+            const type = btn.dataset.type;
+            const section = (dealingControls.sections || []).find((s) => s.productType === type);
+            const target = section && (section.targets || []).find((t) => t.id === targetId);
+            if (target && typeof target.onSell === "function") {
+              btn.addEventListener("click", () => {
+                const qtyInput = actionsEl.querySelector(`.deal-qty-in[data-deal-target-id="${targetId}"][data-deal-type="${type}"]`);
+                const qty = Math.max(1, Math.min(parseInt(qtyInput && qtyInput.value, 10) || 1, target.maxQty));
+                target.onSell(qty);
+              });
+            }
           });
         }
-      });
-    } else if (attackControls) {
-      const range = actionsEl.querySelector("[data-attack-count]");
-      const confirmBtn = actionsEl.querySelector("[data-attack-confirm]");
-      if (range)
-        range.addEventListener("input", (e) => {
-          const v = parseInt(e.target.value, 10);
-          if (typeof attackControls.onCountChange === "function")
-            attackControls.onCountChange(v);
-          openDistrictPanel(id, gameState.districts.find((d) => d.id === id) || district, { buyButtons, buildingList, attackControls: { ...attackControls, selectedCount: v }, dealingControls });
-        });
-      if (confirmBtn && !attackControls.confirmDisabled)
-        confirmBtn.addEventListener("click", () => {
-          if (typeof attackControls.onConfirm === "function")
-            attackControls.onConfirm();
-        });
-    } else
-      buyButtons.forEach((b, i) => {
-        const btn = actionsEl.querySelector(`[data-action-index="${i}"]`);
-        if (btn && typeof b.onClick === "function")
-          btn.addEventListener("click", () => b.onClick());
-      });
-  }
 
-  const buildingsEl = document.getElementById("panel-buildings");
-  if (buildingsEl) {
-    buildingsEl.innerHTML = `
+        if (attackControls) {
+          const range = actionsEl.querySelector("[data-attack-count]");
+          const confirmBtn = actionsEl.querySelector("[data-attack-confirm]");
+          if (range)
+            range.addEventListener("input", (e) => {
+              const v = parseInt(e.target.value, 10);
+              if (typeof attackControls.onCountChange === "function")
+                attackControls.onCountChange(v);
+              openDistrictPanel(id, gameState.districts.find((d) => d.id === id) || district, { buyButtons, buildingList, attackControls: { ...attackControls, selectedCount: v }, dealingControls });
+            });
+          if (confirmBtn && !attackControls.confirmDisabled)
+            confirmBtn.addEventListener("click", () => {
+              if (typeof attackControls.onConfirm === "function")
+                attackControls.onConfirm();
+            });
+        } else if (Array.isArray(buyButtons) && buyButtons.length) {
+          buyButtons.forEach((b, i) => {
+            const btn = actionsEl.querySelector(`[data-action-index="${i}"]`);
+            if (btn && typeof b.onClick === "function")
+              btn.addEventListener("click", () => b.onClick());
+          });
+        }
+      }
+    const buildingsEl = document.getElementById("panel-buildings");
+    if (buildingsEl) {
+      buildingsEl.innerHTML = `
       <div style="font-size:7px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.2);margin-bottom:6px;">Buildings</div>
       ${(buildingList || []).length
         ? (buildingList || [])
@@ -177,12 +192,12 @@ export function openDistrictPanel(
             .join("")
         : '<div style="font-size:9px;color:rgba(255,255,255,0.3);">None</div>'}
     `;
-    (buildingList || []).forEach((b, i) => {
-      const del = buildingsEl.querySelector(`[data-building-del="${i}"]`);
-      if (del && typeof b.onDelete === "function")
-        del.addEventListener("click", () => b.onDelete());
-    });
-  }
+      (buildingList || []).forEach((b, i) => {
+        const del = buildingsEl.querySelector(`[data-building-del="${i}"]`);
+        if (del && typeof b.onDelete === "function")
+          del.addEventListener("click", () => b.onDelete());
+      });
+    }
 
   const dispatchEl = document.getElementById("panel-dispatch");
   if (dispatchEl) {
@@ -210,9 +225,9 @@ export function openDistrictPanel(
   const phase = gameState.phase;
   const isOwned = owner === "player1";
 
-  // panel-stash: show during Buying and Dealing only, hide during Attacking
+  // panel-stash: show during Buying and Dealing only for owned districts, hide during Attacking
   const stashEl2 = document.getElementById("panel-stash");
-  if (stashEl2) stashEl2.style.display = (phase === "Attacking") ? "none" : "block";
+  if (stashEl2) stashEl2.style.display = (isOwned && phase !== "Attacking") ? "block" : "none";
 
   // panel-prices: show during Dealing only
   const pricesEl2 = document.getElementById("panel-prices");
@@ -226,8 +241,8 @@ export function openDistrictPanel(
   // (Attacking phase handles non-owned via attackControls passed from input.js)
   const actionsEl2 = document.getElementById("panel-actions");
   if (actionsEl2) {
-    const showActions = isOwned || attackControls;
-    actionsEl2.style.display = showActions ? "block" : "none";
+    const hasContent = isOwned || !!attackControls;
+    actionsEl2.style.display = hasContent ? "block" : "none";
   }
 }
 

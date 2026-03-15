@@ -174,7 +174,7 @@ export function initInput() {
         updateDistrict(id, d);
         renderSidebar();
         setPanelSelection(id);
-        openDistrictPanel(id, d, { buyButtons: [{ label: "Applied card", disabled: true }] });
+        openDistrictPanel(id, d, { statusMessage: "Card applied" });
       } else {
         clearCardTargeting();
       }
@@ -199,9 +199,7 @@ export function initInput() {
             selectedTargetId = null;
             highlightTargets([]);
             setPanelSelection(id);
-            openDistrictPanel(id, d, {
-              buyButtons: [{ label: "Attack used this round", disabled: true }],
-            });
+              openDistrictPanel(id, d, { statusMessage: "Attack already used this round" });
             return;
           }
         }
@@ -213,9 +211,7 @@ export function initInput() {
           selectedSourceId = null;
           highlightTargets([]);
           setPanelSelection(id);
-          openDistrictPanel(id, d, {
-            buyButtons: [{ label: "No thugs available", disabled: true }],
-          });
+            openDistrictPanel(id, d, { statusMessage: "No thugs in this district" });
           return;
         }
 

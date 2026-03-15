@@ -207,6 +207,16 @@ body::after { content:''; position:fixed; inset:0; pointer-events:none; z-index:
 .panel-action-label { font-size: 10px; color: rgba(255,255,255,0.5); }
 .panel-action-cost { font-size: 9px; color: rgba(255,255,255,0.25); }
 .panel-buildings { padding: 10px 18px; border-bottom: 1px solid rgba(255,255,255,0.04); flex-shrink: 0; }
+
+/* Compact grid for buy buttons to avoid overly tall panel */
+.panel-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.panel-actions-grid .panel-action-btn:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 .panel-building-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; font-size: 9px; color: rgba(255,255,255,0.35); }
 .panel-building-del { border: none; background: none; color: rgba(255,255,255,0.2); font-size: 11px; cursor: pointer; padding: 0 4px; transition: color 0.1s ease; }
 .panel-building-del:hover { color: rgba(248,113,113,0.7); }
