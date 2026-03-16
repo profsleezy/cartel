@@ -3,12 +3,14 @@
 // All rendering is decoupled: game logic emits 'gameStateChanged' and 'gameOver'
 // custom events; client/main.js listens and drives the UI.
 
-import { gameState, checkElimination, getPlayer, addNews } from "./state.js";
+import { gameState, checkElimination, getPlayer, addNews, checkVictory } from "./state.js";
 import { runProduction } from "./economy.js";
 import { decayHeat, runPassiveRaids, processRaidTimers } from "./heat.js";
 import { resolveAttack } from "./combat.js";
 import { drawEventTile, applyEventEffect } from "./events.js";
 import { drawCard } from "./cards.js";
+import * as AI from "./ai.js";
+import { rand } from "./rng.js";
 
 const PHASES = ["Buying", "Dealing", "Attacking"];
 let intervalId = null;
@@ -38,7 +40,7 @@ function getPriceRangeMultiplier(district, product) {
     min = 0.5;
     max = 1.0;
   }
-  return min + Math.random() * (max - min);
+  return min + rand() * (max - min);
 }
 
 function generateDealingPrice(district, product) {
@@ -117,10 +119,7 @@ export function startPhaseTimer() {
       }
 
       // Resolve queued attacks from the previous Attacking phase
-      if (
-        Array.isArray(gameState.queuedAttacks) &&
-        gameState.queuedAttacks.length > 0
-      ) {
+      if (Array.isArray(gameState.queuedAttacks) && gameState.queuedAttacks.length > 0) {
         gameState.queuedAttacks.forEach((a) => {
           const src = gameState.districts.find((x) => x.id === a.fromId);
           const tgt = gameState.districts.find((x) => x.id === a.toId);
@@ -133,40 +132,48 @@ export function startPhaseTimer() {
           src.thugs = Math.max(0, (src.thugs || 0) - committed);
           const res = resolveAttack(src, committed, tgt);
 
-            if (res.attackerWon) {
-            tgt.thugs = Math.max(
-              0,
-              (tgt.thugs || 0) - (res.defenderLosses || 0),
-            );
-            tgt.owner = "player1";
-            const survivors =
-              res.attackerSurvivors ||
-              Math.max(0, committed - (res.attackerLosses || 0));
+          const attackerId = src.owner;
+          const attacker = getPlayer(attackerId);
+          const defender = getPlayer(tgt.owner);
+
+          if (res.attackerWon) {
+            tgt.thugs = Math.max(0, (tgt.thugs || 0) - (res.defenderLosses || 0));
+            tgt.owner = attackerId;
+            const survivors = res.attackerSurvivors || Math.max(0, committed - (res.attackerLosses || 0));
             tgt.thugs = (tgt.thugs || 0) + survivors;
             tgt.pendingAttack = false;
-            // notify via addNews so UI listens immediately
-            addNews(`You captured ${tgt.id} (${tgt.name}). You lost ${res.attackerLosses || 0} thugs.`);
+            addNews(`${attackerId} captured ${tgt.id} (${tgt.name}). Attacker lost ${res.attackerLosses || 0}, Defender lost ${res.defenderLosses || 0}.`);
           } else {
-            tgt.thugs = Math.max(
-              0,
-              (tgt.thugs || 0) - (res.defenderLosses || 0),
-            );
+            tgt.thugs = Math.max(0, (tgt.thugs || 0) - (res.defenderLosses || 0));
             tgt.pendingAttack = false;
-            // notify via addNews so UI listens immediately
-            addNews(`You were repelled at ${tgt.id} (${tgt.name}). Defender lost ${res.defenderLosses || 0} thugs.`);
+            addNews(`${attackerId} was repelled at ${tgt.id} (${tgt.name}). Attacker lost ${res.attackerLosses || 0}, Defender lost ${res.defenderLosses || 0}.`);
+          }
+
+          // emit an immediate state change so UI refreshes pendingAttack highlights
+          emit(gameState.phase, true);
+
+          // Check for victory after each ownership change
+          const victor = checkVictory();
+          if (victor) {
+            window.dispatchEvent(new CustomEvent('gameOver', { detail: { winner: victor } }));
           }
         });
 
         // Clear the attack queue
         gameState.queuedAttacks = [];
+        // Ensure no stale pendingAttack highlights remain
+        gameState.districts.forEach((d) => {
+          if (d.pendingAttack) d.pendingAttack = false;
+        });
+        emit(gameState.phase, true);
       }
 
       // Reset round-scoped modifiers and active card effect indicators
       gameState.eventModifiers = {};
       gameState.activeCardEffects = [];
 
-      // Draw one card and a new event tile at the start of each round (Buying = round start)
-      drawCard();
+      // Draw one card for each player and a new event tile at the start of each round (Buying = round start)
+      gameState.players.forEach((p) => drawCard(p.id));
       drawEventTile();
       applyEventEffect();
 
@@ -178,6 +185,14 @@ export function startPhaseTimer() {
         p.hasAttackedThisRound = false;
         // reset played-card flag so hand UI returns to normal
         p.playedCardThisRound = false;
+      });
+
+      // Let bot players run their Buying-phase decisions with a small randomized delay
+      gameState.players.forEach((p) => {
+        if (p.isBot) {
+          const delay = Math.floor(300 + rand() * 1200);
+          setTimeout(() => AI.onBuyingPhase(p.id), delay);
+        }
       });
 
       // Check elimination — emit gameOver if a player has been removed
@@ -204,6 +219,24 @@ export function startPhaseTimer() {
         });
       });
       runProduction();
+
+      // Let bot players run their Dealing-phase decisions with slight delays
+      gameState.players.forEach((p) => {
+        if (p.isBot) {
+          const delay = Math.floor(200 + rand() * 1000);
+          setTimeout(() => AI.onDealingPhase(p.id), delay);
+        }
+      });
+    }
+
+    // Run bot attacks when entering Attacking phase
+    if (gameState.phase === "Attacking") {
+      gameState.players.forEach((p) => {
+        if (p.isBot) {
+          const delay = Math.floor(500 + rand() * 2000);
+          setTimeout(() => AI.onAttackingPhase(p.id), delay);
+        }
+      });
     }
 
     // Initial render — treat as a phase change so the full UI is drawn

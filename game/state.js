@@ -1,4 +1,5 @@
 // game/state.js
+import { rand, reseed, shuffle } from './rng.js';
 // Single source of truth for game state. Nothing else should create its own copy.
 
 export const gameState = {
@@ -6,14 +7,8 @@ export const gameState = {
   timer: 45,
   roundNumber: 1,
   players: [
-    {
-      id: "player1",
-      cash: 50000,
-      dealers: 3,
-      pushers: 1,
-      soldThisRound: 0,
-      hand: [],
-    },
+    // use createPlayer below to ensure parity when creating players
+    // default local human retained for backwards-compatibility
   ],
   // districts will be populated by initGameState() from data/districts.json
   districts: [],
@@ -26,6 +21,28 @@ export const gameState = {
   // { priceMultiplier, productionMultiplier, raidImmunity, stashProtect, pusherCapacityMultiplier, extraAttack }
   eventModifiers: {},
 };
+
+// create default initial player(s) to keep backwards compat with existing UI
+export function createPlayer(id = "player1", isBot = false) {
+  return {
+    id,
+    isBot: Boolean(isBot),
+    name: id,
+    cash: 50000,
+    dealers: 3,
+    pushers: 1,
+    soldThisRound: 0,
+    hand: [],
+    buildingsBoughtThisRound: { lab: 0, growhouse: 0, refinery: 0 },
+    thugsHiredThisRound: 0,
+    hasAttackedThisRound: false,
+  };
+}
+
+// ensure a default human player exists for compatibility
+if (!gameState.players || gameState.players.length === 0) {
+  gameState.players = [createPlayer("player1", false)];
+}
 
 /**
  * Add a news entry and notify listeners.
@@ -53,6 +70,30 @@ export function ensureQueuedAttacks() {
 }
 
 /**
+ * Queue an attack on behalf of a player.
+ * Enforces one-attack-per-player-per-round unless extraAttack modifier is present.
+ * Returns { success, message }.
+ */
+export function queueAttack(fromId, toId, thugsCount, playerId = "player1") {
+  if (!gameState.queuedAttacks) gameState.queuedAttacks = [];
+  const player = getPlayer(playerId);
+  if (!player) return { success: false, message: 'No player' };
+
+  const extra = gameState.eventModifiers && gameState.eventModifiers.extraAttack;
+  if (player.hasAttackedThisRound && !extra) {
+    return { success: false, message: 'Player already attacked this round' };
+  }
+
+  gameState.queuedAttacks.push({ fromId, toId, thugsCount, attackerId: playerId });
+  player.hasAttackedThisRound = true;
+
+  const tgt = gameState.districts.find((x) => x.id === toId);
+  if (tgt) tgt.pendingAttack = true;
+
+  return { success: true };
+}
+
+/**
  * Initialize the gameState.districts from data/districts.json
  * This is async because we fetch the JSON file in the browser environment.
  */
@@ -68,7 +109,21 @@ export async function initGameState() {
     const SPECIALTY_MULTIPLIER = 1.4;
     const WEAKNESS_MULTIPLIER = 0.75;
 
-    gameState.districts = data.map((d) => {
+    // reseed RNG per game so distribution varies across runs
+    try {
+      const entropy = Date.now() ^ (Math.floor(Math.random() * 1000000) >>> 0);
+      reseed(entropy);
+    } catch (err) {}
+
+    // 1. Shuffle the raw data first
+    const rawData = [...data];
+    for (let i = rawData.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rawData[i], rawData[j]] = [rawData[j], rawData[i]];
+    }
+
+    // 2. Map to objects in this new random order
+    const districts = rawData.map((d) => {
       const basePrices = {
         coke: d.prices && d.prices.coke ? roundTo500(d.prices.coke) : 7500,
         weed: d.prices && d.prices.weed ? roundTo500(d.prices.weed) : 5000,
@@ -76,10 +131,10 @@ export async function initGameState() {
       };
 
       // Random specialty and weakness per district, not the same product.
-      const specialty = PRODUCTS[Math.floor(Math.random() * PRODUCTS.length)];
-      let weakness = PRODUCTS[Math.floor(Math.random() * PRODUCTS.length)];
+      const specialty = PRODUCTS[Math.floor(rand() * PRODUCTS.length)];
+      let weakness = PRODUCTS[Math.floor(rand() * PRODUCTS.length)];
       while (weakness === specialty) {
-        weakness = PRODUCTS[Math.floor(Math.random() * PRODUCTS.length)];
+        weakness = PRODUCTS[Math.floor(rand() * PRODUCTS.length)];
       }
 
       return {
@@ -103,28 +158,57 @@ export async function initGameState() {
       };
     });
 
+    // 3. One more shuffle of the objects just to be absolutely certain
+    for (let i = districts.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [districts[i], districts[j]] = [districts[j], districts[i]];
+    }
+    
+    gameState.districts = districts;
+    console.log('[state] Final shuffled order:', districts.map(d => d.id).join(', '));
+
     function roundTo500(value) {
       if (typeof value !== "number") return 500;
       return Math.round(value / 500) * 500;
     }
 
-    // for a tiny hand-tuned starting state, mark some districts with player IDs
-    const assign = {
-      d1: "player1",
-      d3: "player1",
-      d6: "player1",
-      d10: "player1",
-      d4: "enemy1",
-      d8: "enemy1",
-      d12: "enemy1",
-    };
-    gameState.districts.forEach((ds) => {
-      if (assign[ds.id]) ds.owner = assign[ds.id];
+    // If only the default human exists, create default bots so local testing
+    // has multiple players to interact with. This creates enemy1..enemy3.
+    if (!gameState.players || gameState.players.length <= 1) {
+      gameState.players = [createPlayer("player1", false)];
+      for (let i = 1; i <= 3; i++) {
+        const id = `enemy${i}`;
+        gameState.players.push(createPlayer(id, true));
+      }
+    }
+
+    const playerIds = gameState.players.map((p) => p.id);
+    for (let i = playerIds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [playerIds[i], playerIds[j]] = [playerIds[j], playerIds[i]];
+    }
+
+    gameState.districts.forEach((d) => {
+      d.owner = "neutral";
+      d.thugs = 0;
     });
 
-    // give each player-owned district a starting thug
+    const maxPerPlayer = 2;
+    const taken = new Set();
+    playerIds.forEach((pid) => {
+      let count = 0;
+      while (count < maxPerPlayer && taken.size < gameState.districts.length) {
+        const idx = Math.floor(Math.random() * gameState.districts.length);
+        if (taken.has(idx)) continue;
+        taken.add(idx);
+        gameState.districts[idx].owner = pid;
+        count += 1;
+      }
+    });
+
+    // Give each owned district a starting thug (1)
     gameState.districts.forEach((ds) => {
-      if (ds.owner === "player1") ds.thugs = 1;
+      if (ds.owner && ds.owner !== 'neutral') ds.thugs = 1;
     });
 
     // initialize per-player purchase counters and thug counters
@@ -156,15 +240,39 @@ export async function initGameState() {
  */
 export function checkElimination() {
   const removed = [];
-  // simple rule: if there are no districts owned by the human player, remove them
-  const ownedCount = gameState.districts.filter(
-    (d) => d.owner === "player1",
-  ).length;
-  if (ownedCount === 0 && gameState.players.length > 0) {
-    const rem = gameState.players.splice(0, 1);
-    if (rem && rem.length) removed.push(rem[0].id);
-  }
+  // remove players who own zero districts
+  const playersToRemove = gameState.players.filter((p) => {
+    const owned = gameState.districts.some((d) => d.owner === p.id);
+    return !owned;
+  });
+  playersToRemove.forEach((p) => {
+    const idx = gameState.players.findIndex((x) => x.id === p.id);
+    if (idx >= 0) {
+      const rem = gameState.players.splice(idx, 1);
+      if (rem && rem.length) removed.push(rem[0].id);
+    }
+  });
   return removed;
+}
+
+/**
+ * Check for victory: returns winning player id or null.
+ * Victory occurs when a single player owns all districts.
+ */
+export function checkVictory() {
+  if (!gameState.districts || gameState.districts.length === 0) return null;
+  const owner = gameState.districts[0].owner;
+  if (!owner || owner === "neutral") return null;
+  const allOwned = gameState.districts.every((d) => d.owner === owner);
+  if (allOwned) {
+    gameState.winner = owner;
+    try {
+      if (typeof window !== 'undefined')
+        window.dispatchEvent(new CustomEvent('gameOver', { detail: { winner: owner } }));
+    } catch (err) {}
+    return owner;
+  }
+  return null;
 }
 
 /**

@@ -23,14 +23,20 @@ import { initInput, openBuyingPanel, showDealPanel } from "./input.js";
 window.addEventListener("gameStateChanged", (e) => {
   renderGameStatus(e.detail.phaseChanged);
   renderEventTile();
-  if (e.detail.phaseChanged) {
-    triggerPhaseChangeFlash();
+  
+  // If phase changed OR data was updated (e.g. by AI), refresh the board and sidebar
+  if (e.detail.phaseChanged || e.detail.dataUpdated) {
+    if (e.detail.phaseChanged) {
+      triggerPhaseChangeFlash();
+      clearActionPanel();
+      highlightTargets([]);
+    }
+    
     renderSidebar();
-    clearActionPanel();
-    highlightTargets([]);
     gameState.districts.forEach((d) => updateDistrict(d.id, d));
-    // If the side panel was open, refresh its contents for the new phase
-      try {
+    
+    // If the side panel was open, refresh its contents
+    try {
       const openId = getSelectedDistrictId();
       if (openId) {
         const d = gameState.districts.find((x) => x.id === openId);
@@ -70,7 +76,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   await Promise.all([initGameState(), initEvents(), initCards()]);
 
   // Deal the player's starting hand (needs card pool loaded first)
-  dealStartingHand(2);
+  // Deal starting hands for all players so each has equal cards
+  (gameState.players || []).forEach((p) => {
+    try { dealStartingHand(2, p.id); } catch (err) {}
+  });
 
   // Initial render before the phase timer starts
   renderGameStatus(true);
@@ -79,6 +88,21 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Start the phase timer (fires gameStateChanged on every tick / phase change)
   startPhaseTimer();
+
+  // Let bot players take their initial Buying decisions immediately
+  try {
+    const AI = await import('../game/ai.js');
+    (gameState.players || []).forEach((p) => {
+      if (p.isBot) {
+        const delay = Math.floor(300 + Math.random() * 1200);
+        setTimeout(() => AI.onBuyingPhase(p.id), delay);
+      }
+    });
+    // trigger an immediate UI refresh so purchases/changes show up
+    window.dispatchEvent(new CustomEvent('gameStateChanged', { detail: { phase: gameState.phase, phaseChanged: true } }));
+  } catch (err) {
+    // ignore if dynamic import fails
+  }
 
   // Wire board and sidebar click handlers
   initInput();

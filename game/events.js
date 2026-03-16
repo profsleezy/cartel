@@ -4,6 +4,7 @@
 
 import { gameState, getPlayer, addNews } from "./state.js";
 import { addHeat, triggerRaid } from "./heat.js";
+import { rand } from "./rng.js";
 
 let eventsData = [];
 
@@ -24,7 +25,7 @@ const EVENT_FIRE_CHANCE = 0.6;
  */
 function weightedRandom(pool) {
   const total = pool.reduce((sum, e) => sum + (e.weight || 1), 0);
-  let r = Math.random() * total;
+  let r = rand() * total;
   for (const e of pool) {
     r -= e.weight || 1;
     if (r <= 0) return e;
@@ -42,7 +43,7 @@ function weightedRandom(pool) {
  */
 export function drawEventTile() {
   // Roll to see if any event fires this round
-  if (!eventsData.length || Math.random() > EVENT_FIRE_CHANCE) {
+  if (!eventsData.length || rand() > EVENT_FIRE_CHANCE) {
     gameState.currentEvent = null;
     return null;
   }
@@ -76,11 +77,11 @@ export function applyEventEffect() {
  * Multiplier modifiers stack multiplicatively so an event + a card both granting
  * a price surge compound rather than one overwriting the other.
  */
-export function applyEffect(effect) {
+export function applyEffect(effect, playerId = "player1") {
   if (!effect || !effect.type) return;
 
-  const player = getPlayer("player1");
-  const owned = gameState.districts.filter((d) => d.owner === "player1");
+  const player = getPlayer(playerId);
+  const owned = player ? gameState.districts.filter((d) => d.owner === playerId) : [];
 
   // Ensure the modifiers bag exists
   if (!gameState.eventModifiers) gameState.eventModifiers = {};
@@ -128,7 +129,7 @@ export function applyEffect(effect) {
     // ── Immediate: random raid ─────────────────────────────────────────────
     case "raid_random": {
       if (!owned.length) break;
-      const tgt = owned[Math.floor(Math.random() * owned.length)];
+      const tgt = owned[Math.floor(rand() * owned.length)];
       triggerRaid(tgt.id);
       addNews(`Fed Raid: ${tgt.name} has been raided!`);
       break;

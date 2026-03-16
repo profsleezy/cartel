@@ -20,6 +20,7 @@ const LONG_TERM_EFFECTS = new Set([
 
 import { gameState, getPlayer, addNews } from "./state.js";
 import { applyEffect } from "./events.js";
+import { rand } from "./rng.js";
 
 let cardsData = [];
 
@@ -36,15 +37,15 @@ export async function initCards() {
 /** Pick one random card from the pool and return a shallow copy. */
 function pickRandom() {
   if (!cardsData.length) return null;
-  return { ...cardsData[Math.floor(Math.random() * cardsData.length)] };
+  return { ...cardsData[Math.floor(rand() * cardsData.length)] };
 }
 
 /**
  * Deal `count` random cards into player1's starting hand.
  * Called once after initCards() during game initialisation.
  */
-export function dealStartingHand(count = 2) {
-  const player = getPlayer("player1");
+export function dealStartingHand(count = 2, playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return;
   if (!Array.isArray(player.hand)) player.hand = [];
   for (let i = 0; i < count; i++) {
@@ -58,8 +59,8 @@ export function dealStartingHand(count = 2) {
  * Called at the end of each Buying phase (transition into Dealing).
  * Returns the drawn card, or null if the pool is empty.
  */
-export function drawCard() {
-  const player = getPlayer("player1");
+export function drawCard(playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return null;
   if (!Array.isArray(player.hand)) player.hand = [];
   const card = pickRandom();
@@ -85,8 +86,8 @@ export function getCardById(cardId) {
   return cardsData.find((c) => c.id === cardId) || null;
 }
 
-export function playCard(cardId) {
-  const player = getPlayer("player1");
+export function playCard(cardId, playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player found" };
   if (!Array.isArray(player.hand))
     return { success: false, message: "Hand not initialised" };
@@ -115,7 +116,7 @@ export function playCard(cardId) {
   }
 
   // Apply the card's effect using the shared applicator from events.js
-  applyEffect(card.effect);
+  applyEffect(card.effect, playerId);
 
   // If this card's effect lingers for the rest of the round, track it so
   // the UI can show an active indicator until the round resets.
@@ -141,8 +142,8 @@ export function playCard(cardId) {
   return { success: true, card };
 }
 
-export function playCardOnDistrict(cardId, districtId) {
-  const player = getPlayer("player1");
+export function playCardOnDistrict(cardId, districtId, playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player found" };
   if (!Array.isArray(player.hand))
     return { success: false, message: "Hand not initialised" };
@@ -156,7 +157,7 @@ export function playCardOnDistrict(cardId, districtId) {
 
   const d = gameState.districts.find((x) => x.id === districtId);
   if (!d) return { success: false, message: "District not found" };
-  if (d.owner !== "player1")
+  if (d.owner !== playerId)
     return { success: false, message: "District must be owned to apply this card" };
 
   if (card.id === "c5") {
@@ -172,7 +173,7 @@ export function playCardOnDistrict(cardId, districtId) {
     addNews(`${card.name}: ${d.name} gained 4 thugs.`);
   } else {
     // Fallback: apply the card effect if defined
-    applyEffect(card.effect);
+    applyEffect(card.effect, playerId);
   }
 
   // Remove card from hand

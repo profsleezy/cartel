@@ -18,7 +18,7 @@ import {
   hireThugs,
 } from "../game/economy.js";
 import { updateDistrict, highlightTargets, flashDistrict } from "./board.js";
-import { gameState, getPlayer } from "../game/state.js";
+import { gameState, getPlayer, queueAttack } from "../game/state.js";
 import { getValidAttackTargets } from "../game/combat.js";
 
 const PRODUCT_META = [
@@ -499,33 +499,27 @@ export function initInput() {
    * tile gets a persistent purple glow until the attack resolves next Buying phase.
    */
   function _queueAttack(fromId, toId, thugsCount) {
-    if (!gameState.queuedAttacks) gameState.queuedAttacks = [];
-    gameState.queuedAttacks.push({ fromId, toId, thugsCount });
+    const res = queueAttack(fromId, toId, thugsCount, 'player1');
+    if (!res || !res.success) {
+      console.warn('[input] queueAttack failed:', res && res.message);
+      return;
+    }
 
-    const p = getPlayer("player1");
-    if (p) p.hasAttackedThisRound = true;
-
-    // Mark the target district — board.js/updateDistrict will keep the glow
-    // visible across re-renders until phases.js clears it when the attack resolves.
+    // Update UI immediately
     const tgt = gameState.districts.find((x) => x.id === toId);
     if (tgt) {
-      tgt.pendingAttack = true;
       updateDistrict(toId, tgt);
     }
 
-    // Clear all selection highlights and the action panel
     highlightTargets([]);
     clearActionPanel();
     renderSidebar();
-    // If the side panel is still open for the source district, refresh it to remove attack UI
     try {
       const openId = getSelectedDistrictId();
       if (openId === fromId) {
         const d = gameState.districts.find((x) => x.id === fromId);
-        if (d) openDistrictPanel(fromId, d, { statusMessage: 'Attack already used this round' });
+        if (d) openDistrictPanel(fromId, d, { statusMessage: 'Attack queued' });
       }
-    } catch (err) {
-      // defensive
-    }
+    } catch (err) {}
   }
 }

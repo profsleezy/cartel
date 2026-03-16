@@ -3,6 +3,7 @@
 
 import { gameState, getPlayer } from "./state.js";
 import { addHeat, rollRaid, triggerRaid } from "./heat.js";
+import { rand } from "./rng.js";
 
 // Building cost ladder (per-player escalation). Max 3 purchases per type per round.
 const BUILDING_COSTS = [10000, 18000, 30000];
@@ -14,7 +15,7 @@ const BUILDING_COSTS = [10000, 18000, 30000];
 export function produceProduct(districtId) {
   const d = gameState.districts.find((x) => x.id === districtId);
   if (!d) return false;
-  if (d.owner !== "player1") return false;
+  if (!d.owner || d.owner === "neutral") return false;
   // Raided districts cannot produce until recovered.
   if (d.raided) return false;
   const mapping = { lab: "coke", growhouse: "weed", refinery: "heroin" };
@@ -29,9 +30,7 @@ export function produceProduct(districtId) {
         (gameState.eventModifiers &&
           gameState.eventModifiers.productionMultiplier) ||
         1;
-      const amount = Math.ceil(
-        (Math.floor(Math.random() * 3) + 1) * multiplier,
-      );
+      const amount = Math.ceil((Math.floor(rand() * 3) + 1) * multiplier);
       d.stash[ptype] = (d.stash[ptype] || 0) + amount;
       changed = true;
     });
@@ -55,12 +54,12 @@ export function runProduction() {
  * Attempt to buy a building on behalf of player1.
  * Returns { success, message, district, cost }.
  */
-export function buyBuilding(districtId, type) {
-  const player = getPlayer("player1");
+export function buyBuilding(districtId, type, playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player" };
   const d = gameState.districts.find((x) => x.id === districtId);
   if (!d) return { success: false, message: "District not found" };
-  if (d.owner !== "player1")
+  if (d.owner !== playerId)
     return {
       success: false,
       message: "Cannot buy building on non-owned district",
@@ -90,12 +89,12 @@ export function buyBuilding(districtId, type) {
  * Hire thug(s) on a district. Escalating cost per round.
  * Returns { success, message, district, cost, hired }.
  */
-export function hireThugs(districtId, count = 1) {
-  const player = getPlayer("player1");
+export function hireThugs(districtId, count = 1, playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player" };
   const d = gameState.districts.find((x) => x.id === districtId);
   if (!d) return { success: false, message: "District not found" };
-  if (d.owner !== "player1")
+  if (d.owner !== playerId)
     return { success: false, message: "Cannot hire on non-owned district" };
   if (!Array.isArray(d.buildings)) d.buildings = d.buildings || [];
   if (typeof d.thugs !== "number") d.thugs = 0;
@@ -133,8 +132,8 @@ export function hireThugs(districtId, count = 1) {
  * Buy a pusher for player1. Cost $150.
  * Returns { success, message, pushers, cost }.
  */
-export function buyPusher() {
-  const player = getPlayer("player1");
+export function buyPusher(playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player" };
   const cost = Math.round(15000 / 5) * 5;
   if (player.cash < cost)
@@ -154,12 +153,12 @@ export function buyPusher() {
  * Remove a building from a district by index. Refunds $50.
  * Returns { success, message, district, refund }.
  */
-export function deleteBuilding(districtId, buildingIndex) {
-  const player = getPlayer("player1");
+export function deleteBuilding(districtId, buildingIndex, playerId = "player1") {
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player" };
   const d = gameState.districts.find((x) => x.id === districtId);
   if (!d) return { success: false, message: "District not found" };
-  if (d.owner !== "player1")
+  if (d.owner !== playerId)
     return {
       success: false,
       message: "Cannot delete building on non-owned district",
@@ -189,8 +188,9 @@ export function dealProduct(
   targetDistrictId,
   productType = "coke",
   quantity = 1,
+  playerId = "player1",
 ) {
-  const player = getPlayer("player1");
+  const player = getPlayer(playerId);
   if (!player) return { success: false, message: "No player" };
 
   const src = gameState.districts.find((x) => x.id === sourceDistrictId);
@@ -201,7 +201,7 @@ export function dealProduct(
 
   const tgt = gameState.districts.find((x) => x.id === targetDistrictId);
   if (!tgt) return { success: false, message: "Target district not found" };
-  if (tgt.owner !== "player1")
+  if (tgt.owner !== playerId)
     return {
       success: false,
       message: "Target district must be owned to sell here",
