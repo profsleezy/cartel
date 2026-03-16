@@ -3,7 +3,7 @@
 // All rendering is decoupled: game logic emits 'gameStateChanged' and 'gameOver'
 // custom events; client/main.js listens and drives the UI.
 
-import { gameState, checkElimination, getPlayer } from "./state.js";
+import { gameState, checkElimination, getPlayer, addNews } from "./state.js";
 import { runProduction } from "./economy.js";
 import { decayHeat, runPassiveRaids, processRaidTimers } from "./heat.js";
 import { resolveAttack } from "./combat.js";
@@ -109,15 +109,10 @@ export function startPhaseTimer() {
       // Passive raids at start of Buying
       const passiveRaided = runPassiveRaids();
       if (Array.isArray(passiveRaided) && passiveRaided.length) {
-        if (!gameState.news) gameState.news = [];
         passiveRaided.forEach((id) => {
           const d = gameState.districts.find((x) => x.id === id);
           if (!d) return;
-          gameState.news.push({
-            text: `Passive RAID: ${d.id} (${d.name}) was raided.`,
-            ts: Date.now(),
-          });
-              if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+          addNews(`Passive RAID: ${d.id} (${d.name}) was raided.`);
         });
       }
 
@@ -149,24 +144,16 @@ export function startPhaseTimer() {
               Math.max(0, committed - (res.attackerLosses || 0));
             tgt.thugs = (tgt.thugs || 0) + survivors;
             tgt.pendingAttack = false;
-            if (!gameState.news) gameState.news = [];
-            gameState.news.push({
-              text: `You captured ${tgt.id} (${tgt.name}). You lost ${res.attackerLosses || 0} thugs.`,
-              ts: Date.now(),
-            });
-            if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+            // notify via addNews so UI listens immediately
+            addNews(`You captured ${tgt.id} (${tgt.name}). You lost ${res.attackerLosses || 0} thugs.`);
           } else {
             tgt.thugs = Math.max(
               0,
               (tgt.thugs || 0) - (res.defenderLosses || 0),
             );
             tgt.pendingAttack = false;
-            if (!gameState.news) gameState.news = [];
-            gameState.news.push({
-              text: `You were repelled at ${tgt.id} (${tgt.name}). Defender lost ${res.defenderLosses || 0} thugs.`,
-              ts: Date.now(),
-            });
-            if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+            // notify via addNews so UI listens immediately
+            addNews(`You were repelled at ${tgt.id} (${tgt.name}). Defender lost ${res.defenderLosses || 0} thugs.`);
           }
         });
 
@@ -189,6 +176,8 @@ export function startPhaseTimer() {
         p.soldThisRound = 0;
         p.thugsHiredThisRound = 0;
         p.hasAttackedThisRound = false;
+        // reset played-card flag so hand UI returns to normal
+        p.playedCardThisRound = false;
       });
 
       // Check elimination — emit gameOver if a player has been removed

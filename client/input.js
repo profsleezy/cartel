@@ -271,9 +271,7 @@ export function initInput() {
       .filter((x) => x.owner === "player1")
       .map((x) => x.id);
     highlightTargets(owned);
-    showActionPanel(owned[0] || null, {
-      buyButtons: [{ label: message, disabled: true }],
-    });
+    // do not open a throwaway action panel here; highlighting is sufficient
   }
 
   
@@ -448,15 +446,8 @@ export function initInput() {
           const ownedTargets = gameState.districts
             .filter((x) => x.owner === "player1")
             .map((x) => x.id);
+          // highlight valid owned targets but do not open an extra action panel
           highlightTargets(ownedTargets);
-          showActionPanel(ownedTargets[0] || null, {
-            buyButtons: [
-              {
-                label: `Select owned district to apply ${card.name}`,
-                disabled: true,
-              },
-            ],
-          });
         }
         return;
       }
@@ -472,6 +463,36 @@ export function initInput() {
       }
     });
   }
+
+  // Also handle clicks on cards rendered inside the left hand drawer
+  document.addEventListener('click', (ev) => {
+    const drawerCard = ev.target.closest('#hand-drawer [data-card-id]');
+    if (!drawerCard) return;
+    const cardId = drawerCard.dataset.cardId;
+    if (!cardId) return;
+
+    const card = getCardById(cardId);
+    if (card && card.targeted) {
+      const res = playCard(cardId);
+      if (res && res.requiresTarget) {
+        pendingCardId = cardId;
+        const ownedTargets = gameState.districts
+          .filter((x) => x.owner === "player1")
+          .map((x) => x.id);
+        // highlight owned targets only — do not open the action panel
+        highlightTargets(ownedTargets);
+      }
+      return;
+    }
+
+    const res = playCard(cardId);
+    if (res && res.success) {
+      renderSidebar();
+      gameState.districts.forEach((d) => updateDistrict(d.id, d));
+    } else {
+      console.warn('[input] playCard failed:', res && res.message);
+    }
+  });
 
   /**
    * Queue an attack, mark the target district as pending-attack so the board

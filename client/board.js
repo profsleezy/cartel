@@ -148,9 +148,9 @@ export function updateDistrict(districtId, newData) {
         <div class="stat"><span class="value">${escapeHtml(thugs)}</span> THUGS</div>
         <div class="stat"><span class="value">${escapeHtml(buildings.length)}</span> BLD</div>
       </div>
-      <div class="risk-wrap">
-        <div class="risk-label">Risk</div>
-        <div class="risk"><div class="risk-fill" style="width:${heatPct}%"></div></div>
+      <div class="heat-wrap">
+        <div class="heat-label">Heat</div>
+        <div class="heat"><div class="heat-fill" style="width:${heatPct}%"></div></div>
       </div>
       ${newData && newData.raided ? `<div class="raid-label">RAIDED</div>` : ""}
     </div>

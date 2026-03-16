@@ -2,7 +2,7 @@
 // Draws a random event each round and applies its effect to the game state.
 // Also exports applyEffect() — the shared effect engine used by both events and cards.js.
 
-import { gameState, getPlayer } from "./state.js";
+import { gameState, getPlayer, addNews } from "./state.js";
 import { addHeat, triggerRaid } from "./heat.js";
 
 let eventsData = [];
@@ -61,12 +61,7 @@ export function applyEventEffect() {
   applyEffect(ev.effect);
 
   // Log to news feed so the player sees what happened
-  if (!gameState.news) gameState.news = [];
-  gameState.news.push({
-    text: `Event: ${ev.name} — ${ev.description}`,
-    ts: Date.now(),
-  });
-  if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+  addNews(`Event: ${ev.name} — ${ev.description}`);
 }
 
 /**
@@ -135,12 +130,7 @@ export function applyEffect(effect) {
       if (!owned.length) break;
       const tgt = owned[Math.floor(Math.random() * owned.length)];
       triggerRaid(tgt.id);
-      if (!gameState.news) gameState.news = [];
-      gameState.news.push({
-        text: `Fed Raid: ${tgt.name} has been raided!`,
-        ts: Date.now(),
-      });
-      if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+      addNews(`Fed Raid: ${tgt.name} has been raided!`);
       break;
     }
 

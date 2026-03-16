@@ -3,6 +3,50 @@
 
 import { gameState, getPlayer } from "../game/state.js";
 
+// Dispatch auto-open state
+let _dispatchAutoCloseTimer = null;
+
+function renderDispatch() {
+  const dispatchContainer = document.getElementById("dispatch-float") || document.getElementById("panel-dispatch");
+  if (!dispatchContainer) return;
+  const news = Array.isArray(gameState.news) ? gameState.news : [];
+  const entries = news.slice(-8).reverse();
+  const listEl = dispatchContainer.querySelector('#dispatch-list') || dispatchContainer;
+  if (entries.length) {
+    listEl.innerHTML = entries
+      .map((n) => {
+        const text = (n && n.text) || String(n);
+        const ts = n && n.ts ? new Date(n.ts).toLocaleTimeString() : "";
+        let type = "neutral";
+        if (/raid|raided/i.test(text)) type = "raid";
+        else if (/win|captured|gain/i.test(text)) type = "win";
+        else if (/loss|repelled|lost/i.test(text)) type = "loss";
+        return `<div class="panel-dispatch-entry"><div class="panel-dispatch-text ${type}">${uiEscape(text)}</div><div class="panel-dispatch-ts">${ts}</div></div>`;
+      })
+      .join("");
+  } else {
+    listEl.innerHTML = '<div style="font-size:9px;color:rgba(255,255,255,0.3);">No activity</div>';
+  }
+}
+
+function _openDispatchFor(ms = 10000) {
+  const el = document.getElementById('dispatch-float');
+  if (!el) return;
+  el.classList.add('open');
+  if (_dispatchAutoCloseTimer) clearTimeout(_dispatchAutoCloseTimer);
+  _dispatchAutoCloseTimer = setTimeout(() => {
+    el.classList.remove('open');
+    _dispatchAutoCloseTimer = null;
+  }, ms);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('newsAdded', (e) => {
+    try { renderDispatch(); } catch (err) {}
+    _openDispatchFor(10000);
+  });
+}
+
 let selectedDistrictId = null;
 
 const OWNER_NAME_COLORS = {
@@ -58,12 +102,12 @@ export function openDistrictPanel(
 
   const statsEl = document.getElementById("panel-stats");
   if (statsEl) {
-    const riskClass =
-      riskPct >= 70 ? "risk-high" : riskPct >= 30 ? "risk-mid" : "risk-low";
+    const heatClass =
+      riskPct >= 70 ? "heat-high" : riskPct >= 30 ? "heat-mid" : "heat-low";
     statsEl.innerHTML = `
       <div class="panel-stat-card"><span class="panel-stat-label">Thugs</span><div class="panel-stat-value">${thugs}</div></div>
       <div class="panel-stat-card"><span class="panel-stat-label">Buildings</span><div class="panel-stat-value">${buildings.length}/5</div></div>
-      <div class="panel-stat-card ${riskClass}"><span class="panel-stat-label">Risk</span><div class="panel-stat-value">${heat}/${HEAT_CAP}</div></div>
+      <div class="panel-stat-card ${heatClass}"><span class="panel-stat-label">Heat</span><div class="panel-stat-value">${heat}/${HEAT_CAP}</div></div>
     `;
   }
 
@@ -248,28 +292,8 @@ export function openDistrictPanel(
       });
     }
 
-  // Render dispatch into floating panel `#dispatch-float` (fallback to inline panel if missing)
-  const dispatchContainer = document.getElementById("dispatch-float") || document.getElementById("panel-dispatch");
-  if (dispatchContainer) {
-    const news = Array.isArray(gameState.news) ? gameState.news : [];
-    const entries = news.slice(-8).reverse();
-    const listEl = dispatchContainer.querySelector('#dispatch-list') || dispatchContainer;
-    if (entries.length) {
-      listEl.innerHTML = entries
-        .map((n) => {
-          const text = (n && n.text) || String(n);
-          const ts = n && n.ts ? new Date(n.ts).toLocaleTimeString() : "";
-          let type = "neutral";
-          if (/raid|raided/i.test(text)) type = "raid";
-          else if (/win|captured|gain/i.test(text)) type = "win";
-          else if (/loss|repelled|lost/i.test(text)) type = "loss";
-          return `<div class="panel-dispatch-entry"><div class="panel-dispatch-text ${type}">${uiEscape(text)}</div><div class="panel-dispatch-ts">${ts}</div></div>`;
-        })
-        .join("");
-    } else {
-      listEl.innerHTML = '<div style="font-size:9px;color:rgba(255,255,255,0.3);">No activity</div>';
-    }
-  }
+  // Render dispatch panel (separate function handles rendering)
+  renderDispatch();
 
   // Visibility rules based on phase and ownership
   const phase = gameState.phase;
@@ -333,6 +357,20 @@ const EFFECT_META = {
 export function renderSidebar() {
   // Re-render the entire bottom bar (hand + player strips) so cash/pushers update
   renderBottomBar();
+  // If the left hand drawer is present, refresh its contents so played/removed
+  // cards disappear immediately and active effects are shown.
+  const panel = document.getElementById('hand-drawer-panel');
+  if (panel) {
+    const inner = panel.querySelector('.hand-drawer__inner');
+    if (inner) {
+      try {
+        renderHand(inner);
+        renderActiveEffects(inner);
+      } catch (err) {
+        // defensive: if render fails, ignore
+      }
+    }
+  }
 }
 
 // Track which event is currently displayed so we only restart the fade
@@ -359,7 +397,7 @@ export function renderEventTile() {
     _shownEventKey = null;
     intel.classList.add("hidden");
     const p = document.getElementById('intel-progress');
-    if (p) { p.style.transition = 'none'; p.style.width = '100%'; }
+    if (p) { p.style.transition = 'none'; p.style.transform = 'scaleX(1)'; }
     return;
   }
 
@@ -382,17 +420,18 @@ export function renderEventTile() {
     // allow multi-line messages; truncate in CSS if needed
     intelText.textContent = `${ev.name}: ${ev.description}`;
 
-    // reset and animate progress
+    // reset and animate progress using transform:scaleX for smoother rendering
     const progressEl = document.getElementById('intel-progress');
     if (progressEl) {
       progressEl.style.transition = 'none';
-      progressEl.style.width = '100%';
+      progressEl.style.transformOrigin = 'left center';
+      progressEl.style.transform = 'scaleX(1)';
       // force reflow then animate
       // eslint-disable-next-line no-unused-expressions
       progressEl.offsetWidth;
       requestAnimationFrame(() => {
-        progressEl.style.transition = 'width 15s linear';
-        progressEl.style.width = '0%';
+        progressEl.style.transition = 'transform 15s linear';
+        progressEl.style.transform = 'scaleX(0)';
       });
     }
 
@@ -403,7 +442,7 @@ export function renderEventTile() {
       dismissBtn.addEventListener('click', () => {
         if (_fadeTimerId) { clearTimeout(_fadeTimerId); _fadeTimerId = null; }
         intel.classList.add('hidden');
-        if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.width = '100%'; }
+        if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.transform = 'scaleX(1)'; }
         // remember this key was dismissed so it won't reappear while unchanged
         if (typeof window !== 'undefined') window.__intelDismissedKey = eventKey;
       });
@@ -417,7 +456,7 @@ export function renderEventTile() {
         intel.classList.add('hidden');
         intel.style.opacity = '';
         intel.style.transition = '';
-        if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.width = '100%'; }
+        if (progressEl) { progressEl.style.transition = 'none'; progressEl.style.transform = 'scaleX(1)'; }
         if (typeof window !== 'undefined') window.__intelDismissedKey = eventKey;
       }, 1200);
     }, 15000);
@@ -456,6 +495,9 @@ function renderTopBar(phase, timer, roundNumber) {
 
   const roundEl = document.getElementById("round-value");
   if (roundEl) roundEl.textContent = `${roundNumber}`;
+
+  // ensure left hand drawer exists
+  ensureHandDrawer();
 }
 
 function renderBottomBar() {
@@ -463,10 +505,8 @@ function renderBottomBar() {
   if (!container) return;
   container.innerHTML = "";
 
-  const handArea = document.createElement("div");
-  handArea.id = "hand-area";
-  handArea.className = "hand-area";
-  container.appendChild(handArea);
+  // prepare player reference
+  const me = getPlayer("player1");
 
   const stripsRow = document.createElement("div");
   stripsRow.className = "player-strips-row";
@@ -515,10 +555,54 @@ function renderBottomBar() {
 
     strip.appendChild(dot);
     strip.appendChild(meta);
+    // nothing extra in the strip — the hand drawer lives on the left edge
     strip.appendChild(stats);
     stripsRow.appendChild(strip);
   }
   container.appendChild(stripsRow);
+}
+
+// Left-side hand drawer ---------------------------------------------------
+function ensureHandDrawer() {
+  if (document.getElementById('hand-drawer')) return;
+  const container = document.createElement('div');
+  container.id = 'hand-drawer';
+  container.className = 'hand-drawer';
+
+  const panel = document.createElement('div');
+  panel.id = 'hand-drawer-panel';
+  panel.className = 'hand-drawer__panel';
+  panel.setAttribute('aria-hidden', 'true');
+
+  const heading = document.createElement('div');
+  heading.className = 'hand-drawer__heading';
+  heading.textContent = 'Deck';
+  heading.style.fontSize = '11px';
+  heading.style.opacity = '0.85';
+  heading.style.marginBottom = '6px';
+
+  const inner = document.createElement('div');
+  inner.className = 'hand-drawer__inner';
+  // append elements
+  panel.appendChild(heading);
+  panel.appendChild(inner);
+  container.appendChild(panel);
+  document.body.appendChild(container);
+
+  // simple behavior: hover opens (CSS) and click toggles persistent open state.
+  let populated = false;
+  function populateOnce() {
+    if (populated) return;
+    inner.innerHTML = '';
+    renderHand(inner);
+    populated = true;
+  }
+
+  container.addEventListener('mouseenter', () => {
+    populateOnce();
+  });
+
+  // panel is hover-activated (CSS). Populate on first proximity (mouseenter).
 }
 
 export function renderPhaseBanner(phase) {
@@ -533,6 +617,8 @@ function renderGameUi() {
   renderTopBar(gameState.phase, gameState.timer, gameState.roundNumber);
   renderBottomBar();
 }
+
+// (hand indicator removed; left drawer is used instead)
 
 // expose helper so other code can update the bar if needed
 let _phaseFlashInitialized = false;
@@ -563,17 +649,29 @@ export function triggerPhaseChangeFlash() {
  * After a card is played this round every card gets .card--spent.
  */
 function renderHand(sidebar) {
+  // render the player's hand into the supplied container (clears first)
   const player = getPlayer("player1");
-  if (!player || !Array.isArray(player.hand) || player.hand.length === 0)
-    return;
-
+  sidebar.innerHTML = '';
   const section = document.createElement("div");
   section.className = "hand";
 
   const heading = document.createElement("div");
   heading.className = "hand__heading";
   heading.textContent = "Hand";
+  heading.style.fontSize = '12px';
+  heading.style.marginBottom = '6px';
   section.appendChild(heading);
+
+  if (!player || !Array.isArray(player.hand) || player.hand.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'hand-empty';
+    empty.textContent = 'No cards in deck';
+    empty.style.opacity = '0.6';
+    empty.style.fontSize = '12px';
+    section.appendChild(empty);
+    sidebar.appendChild(section);
+    return;
+  }
 
   player.hand.forEach((card) => {
     const el = document.createElement("div");
@@ -581,9 +679,23 @@ function renderHand(sidebar) {
     el.dataset.cardId = card.id;
 
     const phaseMatch = card.phase === "Any" || card.phase === gameState.phase;
+    if (phaseMatch) el.classList.add("card--active");
+    else el.classList.add('card--inactive');
 
-    if (phaseMatch) {
-      el.classList.add("card--active");
+    // assign a subtle hue class based on current round and index so
+    // cards adopt a gentle neon tint that changes each round
+    try {
+      const idx = (player.hand && player.hand.indexOf(card)) || 0;
+      const hueCount = 6;
+      const hueIdx = (((gameState.roundNumber || 0) + idx) % hueCount + hueCount) % hueCount;
+      el.classList.add(`card--hue-${hueIdx}`);
+    } catch (err) {
+      // defensive — if anything goes wrong, skip hue
+    }
+
+    // if any card has been played this round mark remaining cards as spent
+    if (player && player.playedCardThisRound) {
+      el.classList.add('card--spent');
     }
 
     el.innerHTML = `
@@ -605,10 +717,8 @@ function renderActiveEffects(sidebar) {
   const effects = Array.isArray(gameState.activeCardEffects)
     ? gameState.activeCardEffects
     : [];
-  const raided = (gameState.districts || []).filter(
-    (d) => d.owner === "player1" && d.raided,
-  );
-  if (effects.length === 0 && raided.length === 0) return;
+  // Do not show raid timers here — user requested only active modifier pills.
+  if (effects.length === 0) return;
 
   const section = document.createElement("div");
   section.className = "active-effects";
@@ -642,17 +752,7 @@ function renderActiveEffects(sidebar) {
     list.appendChild(pill);
   });
 
-  raided.forEach((d) => {
-    const pill = document.createElement("div");
-    pill.className = "active-effect-pill";
-    pill.title = `${d.name} is raided until ${d.raidTimer || 0} phase ticks`;
-    pill.innerHTML = `
-      <span class="active-effect-pill__icon">⚠️</span>
-      <span class="active-effect-pill__name">${uiEscape(d.name)} raided</span>
-      <span style="font-size:10px;opacity:0.7;margin-left:6px;">${d.raidTimer || 0} ticks left</span>
-    `;
-    list.appendChild(pill);
-  });
+  // (raids intentionally omitted from display)
 
   section.appendChild(list);
   sidebar.appendChild(section);

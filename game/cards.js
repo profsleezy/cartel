@@ -18,7 +18,7 @@ const LONG_TERM_EFFECTS = new Set([
   "extra_attack",
 ]);
 
-import { gameState, getPlayer } from "./state.js";
+import { gameState, getPlayer, addNews } from "./state.js";
 import { applyEffect } from "./events.js";
 
 let cardsData = [];
@@ -132,13 +132,11 @@ export function playCard(cardId) {
   // Remove card from hand
   player.hand.splice(idx, 1);
 
+  // mark that a card was played this round so UI can mark remaining cards as spent
+  player.playedCardThisRound = true;
+
   // Surface to the news feed
-  if (!gameState.news) gameState.news = [];
-  gameState.news.push({
-    text: `Played: ${card.name} — ${card.description}`,
-    ts: Date.now(),
-  });
-  if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+  addNews(`Played: ${card.name} — ${card.description}`);
 
   return { success: true, card };
 }
@@ -164,29 +162,14 @@ export function playCardOnDistrict(cardId, districtId) {
   if (card.id === "c5") {
     d.thugs = (d.thugs || 0) + 2;
     // Add a small news message for clarity
-    if (!gameState.news) gameState.news = [];
-    gameState.news.push({
-      text: `${card.name}: ${d.name} gained 2 thugs.`,
-      ts: Date.now(),
-    });
-    if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+    addNews(`${card.name}: ${d.name} gained 2 thugs.`);
   } else if (card.id === "c2") {
     if (typeof d.heat !== "number") d.heat = 0;
     d.heat = Math.max(0, d.heat - 4);
-    if (!gameState.news) gameState.news = [];
-    gameState.news.push({
-      text: `${card.name}: ${d.name} lost 4 heat.`,
-      ts: Date.now(),
-    });
-    if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+    addNews(`${card.name}: ${d.name} lost 4 heat.`);
   } else if (card.id === "c8") {
     d.thugs = (d.thugs || 0) + 4;
-    if (!gameState.news) gameState.news = [];
-    gameState.news.push({
-      text: `${card.name}: ${d.name} gained 4 thugs.`,
-      ts: Date.now(),
-    });
-    if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+    addNews(`${card.name}: ${d.name} gained 4 thugs.`);
   } else {
     // Fallback: apply the card effect if defined
     applyEffect(card.effect);
@@ -194,5 +177,7 @@ export function playCardOnDistrict(cardId, districtId) {
 
   // Remove card from hand
   player.hand.splice(idx, 1);
+  // mark that a card was played this round so UI can mark remaining cards as spent
+  player.playedCardThisRound = true;
   return { success: true, card, district: d };
 }

@@ -27,6 +27,25 @@ export const gameState = {
   eventModifiers: {},
 };
 
+/**
+ * Add a news entry and notify listeners.
+ * Ensures the `gameState.news` array is kept to a reasonable size
+ * and dispatches a `newsAdded` event on `window` with the new entry.
+ */
+export function addNews(text) {
+  if (!gameState.news) gameState.news = [];
+  const entry = { text: String(text), ts: Date.now() };
+  gameState.news.push(entry);
+  if (gameState.news.length > 50) gameState.news = gameState.news.slice(-50);
+  try {
+    if (typeof window !== 'undefined')
+      window.dispatchEvent(new CustomEvent('newsAdded', { detail: entry }));
+  } catch (err) {
+    // ignore in non-window environments
+  }
+  return entry;
+}
+
 // queued attacks between phases
 export function ensureQueuedAttacks() {
   if (!gameState.queuedAttacks) gameState.queuedAttacks = [];
